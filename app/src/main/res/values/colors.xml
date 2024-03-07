@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="white">#FFFFFFFF</color>
+    <color name="primary">#6684f4</color>
+    <color name="background">#FFFFFFFF</color>
+    <color name="primary_variant">#869ef7</color>
+    <color name="primary_light">#E0E7FF</color>
+    <color name="white_variant">#EFF2FF</color>
+    <color name="black_variant">#6E6E72</color>
+    <color name="textfeild_bg_color">#E7ECFB</color>
+    <color name="unselected_bottom_item">#BCC1D6</color>
+    <color name="selected_chat_color">#86869EF7</color>
+</resources>
