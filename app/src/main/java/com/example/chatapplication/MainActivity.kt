@@ -41,6 +41,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
@@ -67,6 +68,7 @@ import com.example.chatapplication.Repository.ConversationRepository
 import com.example.chatapplication.ui.theme.ChatApplicationTheme
 import com.example.chatapplication.WebSocket.WebSocketClient
 import com.example.chatapplication.db.Message
+import com.example.chatapplication.firebase.FirestoreDb.getNewMessageFirestore
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.google.android.gms.tasks.OnCompleteListener
 import com.google.firebase.messaging.FirebaseMessaging
@@ -82,6 +84,7 @@ class MainActivity : ComponentActivity() {
 //    private lateinit var webSocketListener: WebSocketListener
 //    private val okHttpClient = OkHttpClient()
 //    private var webSocket: WebSocket? = null
+private val WRITE_EXTERNAL_STORAGE_REQUEST_CODE = 123
       lateinit var peopleList : Flow<List<Sender>>
     lateinit  var database: ChatDatabase
     lateinit var viewModelFactory: PeopleViewModelFactory
@@ -154,16 +157,17 @@ class MainActivity : ComponentActivity() {
 
         GlobalScope.launch {
 
-            sleep(4000)
-            FirestoreDb.getNewMessageFirestore("84",database)
-//            val time = System.currentTimeMillis()
-//            database.withTransaction {
-//                for (i in 0..300) {
+//            sleep(4000)
+//            FirestoreDb.getNewMessageFirestore("84",database)
+//            database.senderDao().insertNewSender(Sender(0,"harsh","010",1))
+            val time = System.currentTimeMillis()
+            database.withTransaction {
+                for (i in 0..30) {
 
 //                    database.messageDao()
-//                        .insertMessage(Message(0, "010", i.toString(), 0, time + i, time + i))
-//                }
-//            }
+//                        .insertMessage(Message("010"+i.toString(), "010","text", i.toString(), 0, time + i, time + i))
+                }
+            }
         }
 
 
@@ -175,14 +179,46 @@ class MainActivity : ComponentActivity() {
             return
         }
 
-        resetNotificationSharedPref();
-//        var data = getIntDataSharedPref(this,Constants.total_message_pending)
-//        println("test from main "+data)
+        CoroutineScope(Dispatchers.IO).launch {
+            getNewMessageFirestore("968", database)
+        }
+
+        resetNotificationSharedPref()
+        requestStoragePermission()
     }
 
     private fun resetNotificationSharedPref() {
         saveIntSharedPref(this,Constants.total_message_pending,0)
         saveListSharedPref(this,Constants.notif_users_pending, emptyList())
+    }
+
+    fun requestStoragePermission() {
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
+                WRITE_EXTERNAL_STORAGE_REQUEST_CODE
+            )
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == WRITE_EXTERNAL_STORAGE_REQUEST_CODE) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // Permission granted, proceed with file operations
+            } else {
+                // Permission denied, handle accordingly
+            }
+        }
     }
 
 

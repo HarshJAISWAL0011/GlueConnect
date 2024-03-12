@@ -20,16 +20,21 @@ object Constants {
     val senderId ="sender_id"
     val timestamp = "timestamp"
     val messageId = "messageId"
+    val messageType = "messageType"
     val SQLoffsetValue =30
     val MESSAGE_NOTIFICATION ="Message"
     val MESSAGE_NOTIFICATION_DESC ="Receive message notification"
     val MESSAGE_NOTIFICATION_CHANNEL_ID ="10"
     val SHARED_PREFS ="shared_prefs"
     val FCM_title = "title"
+    val MESSAGE_TYPE_IMAGE = "image"
+    val MESSAGE_TYPE_TEXT = "text"
+    val MESSAGE_TYPE_AUDIO = "audio"
     val notif_users_pending ="users_pending"
     val total_message_pending ="message_pending0"
     val FIRESTORE_USERS ="users"
     val FIRESTORE_MESSAGES ="messages"
+    val MY_ID ="968226"
     val FIRESTORE_REGISTRATION_TOKEN ="token"
 }
 

@@ -22,8 +22,8 @@ abstract class ChatDatabase: RoomDatabase() {
 
         fun getDatabase(context: Context): ChatDatabase{
             synchronized(this){
-                INSTANCE = Room.databaseBuilder(context,ChatDatabase::class.java,"chatDB")
-                  .build()
+                if(INSTANCE == null)
+                INSTANCE = Room.databaseBuilder(context,ChatDatabase::class.java,"chatDB").build()
             }
             return INSTANCE!!
         }

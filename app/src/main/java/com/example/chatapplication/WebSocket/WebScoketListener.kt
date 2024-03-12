@@ -3,12 +3,16 @@ package com.example.chatapplication.WebSocket
 import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Log
+import android.widget.Toast
 import com.example.Constants
-import com.example.Message
+import com.example.Constants.MESSAGE_TYPE_IMAGE
 import com.example.NewConnection
 import com.example.chatapplication.Repository.ConversationRepository
+import com.example.chatapplication.db.ChatDatabase
+import com.example.chatapplication.db.Message
 import com.example.chatapplication.db.SQLFuntions
 import com.example.chatapplication.db.Sender
+import com.example.util.util.URLdownloadFile
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -42,25 +46,64 @@ object webSocketListener : WebSocketListener() {
     override fun onMessage(webSocket: WebSocket, text: String) {
         super.onMessage(webSocket, text)
         Log.d(TAG, "onMessage: $text")
-        try{
-        val jsonObject = JSONObject(text)
-//        if(!jsonObject.(Constants.senderId)) return
+        if(text.contains("Server Recived")) return
+        try {
+            val jsonObject = JSONObject(text)
 
-        val receivedFrom = jsonObject.getString(Constants.senderId)
-        val message = jsonObject.getString(Constants.message)
-        val timestamp= jsonObject.getString(Constants.timestamp)
-        val receivedMessage = Message(receivedFrom,message, timestamp.toLong(),false)
+
+            val receivedFrom = jsonObject.getString(Constants.senderId)
+            val message = jsonObject.getString(Constants.message)
+            val timestamp = jsonObject.getString(Constants.timestamp)
+            val messageId = jsonObject.getString(Constants.messageId)
+            val messageType = jsonObject.getString(Constants.messageType)
+            val receivedMessage = Message(
+                messageId,
+                receivedFrom,
+                messageType,
+                message,
+                1,
+                System.currentTimeMillis(),
+                timestamp.toLong()
+            )
             Log.d(TAG, "onMessage: senderOBj ${receivedMessage}")
-        CoroutineScope(Dispatchers.IO).launch {
-            val senderObj = SQLFuntions.getSenderDetails(receivedFrom, context)
 
-            if (senderObj == null)
-            conversationRepository.insert(Sender(name=receivedFrom,email=receivedFrom, newMessageCount = 1))
-            SQLFuntions.insertMessageSQL(receivedMessage, context)
-        }
+            CoroutineScope(Dispatchers.IO).launch {
 
+                val senderObj = SQLFuntions.getSenderDetails(receivedFrom, context)
+                val messageObj = SQLFuntions.getMessageWithID(messageId, context)
+
+                if (senderObj == null)
+                    conversationRepository.insert(
+                        Sender(
+                            name = receivedFrom,
+                            email = receivedFrom,
+                            newMessageCount = 1
+                        )
+                    )
+                else if (messageObj == null) {
+                    ChatDatabase.getDatabase(context).senderDao()
+                        .updateSender(senderObj.copy(newMessageCount = senderObj.newMessageCount + 1))
+                }
+
+
+                if (messageObj == null) {
+                    if(messageType == MESSAGE_TYPE_IMAGE){
+                        val location = URLdownloadFile(context,receivedMessage)
+                        println("location of saving file = $location")
+                        ChatDatabase.getDatabase(context).messageDao().insertMessage(receivedMessage.copy(message = location.toString()))
+
+                    }else
+                    ChatDatabase.getDatabase(context).messageDao().insertMessage(receivedMessage)
+                } else if (messageObj != null) {
+                    ChatDatabase.getDatabase(context).messageDao().editMessage(receivedMessage)
+
+                }
+
+            }
+
+        } catch (e: Throwable) {
+            Log.d(TAG, "error: ${e.message}")
         }
-        catch (e : Throwable) {  Log.d(TAG, "error: ${e.message}")}
     }
 
     override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {

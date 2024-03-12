@@ -32,6 +32,12 @@ class ChatViewModel( var  senderId: String, private val repository: ChatReposito
         }
     }
 
+    fun updateMessage(message: Message) {
+        viewModelScope.launch {
+            repository.update(message)
+        }
+    }
+
     fun loadOldMessage() {
         println("loading more data")
         viewModelScope.launch {

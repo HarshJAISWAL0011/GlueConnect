@@ -24,11 +24,12 @@ data class Sender(
         childColumns = ["senderId"],
         onDelete = ForeignKey.CASCADE)])
 data class Message(
-    @PrimaryKey(autoGenerate = true)
-    var id: Int=0,
+    @PrimaryKey
+    val messageId: String,
     val senderId: String,
-    val message: String,
-    val isSender: Int,
+    val messageType: String,
+    var message: String,
+    val isReceived: Int,
     val receiveTime: Long,
     val sentTime: Long
 )

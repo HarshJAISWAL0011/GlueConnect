@@ -1,7 +1,35 @@
 package com.example.util
 
+import android.content.ContentResolver
+import android.content.ContentValues
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
+import android.os.Environment
+import android.provider.MediaStore
+import androidx.core.content.ContextCompat.getString
+import com.example.Constants
+import com.example.Constants.MESSAGE_TYPE_IMAGE
+import com.example.SendMessage
+import com.example.chatapplication.R
+import com.example.chatapplication.WebSocket.WebSocketClient
+import com.example.chatapplication.db.ChatDatabase
+import com.example.chatapplication.db.Message
+import com.google.firebase.ktx.Firebase
+import com.google.firebase.storage.ktx.storage
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
+import java.io.IOException
+import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
 import java.util.Locale
 
 object util {
@@ -27,4 +55,126 @@ object util {
         return dateFormat.format(calendar.time)
     }
 
+
+
+    suspend fun saveImageToExternalStorage(context: Context, uri: Uri,fileName: String) {
+
+
+
+            try {
+                val imgDir = File(Environment.getExternalStorageDirectory(),"/Chat/Images")
+                imgDir.mkdirs()
+                val imageFile = File(imgDir, fileName)
+
+                val bitmap =
+                    BitmapFactory.decodeStream(context.contentResolver.openInputStream(uri))
+
+
+                FileOutputStream(imageFile).use { outputStream ->
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 5, outputStream)
+                }
+
+                val contentValues = ContentValues().apply {
+                    put(MediaStore.Images.Media.DISPLAY_NAME, fileName)
+                    put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+                    put(MediaStore.Images.Media.RELATIVE_PATH,  Environment.DIRECTORY_PICTURES)
+                }
+
+                context.contentResolver.insert(
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                    contentValues
+                )
+
+            } catch (e: IOException) {
+                e.printStackTrace()
+                println("error = ${e.message}")
+            }
+
+     }
+
+    suspend fun loadImageFromExternalStorage(filepath: String): Bitmap? {
+        return withContext(Dispatchers.IO) {
+            try {
+                val file = File(filepath)
+
+                if (file.exists()) {
+                    BitmapFactory.decodeFile(file.absolutePath)
+                } else {
+                    null
+                }
+            } catch (e: IOException) {
+                e.printStackTrace()
+                null
+            }
+        }
+    }
+
+     fun uploadFile(message: SendMessage){
+        println("Uploading file")
+        val storage = Firebase.storage
+        val storageRef = storage.reference
+        var file = Uri.fromFile(File(message.jsonObject.getString(Constants.message)))
+        val riversRef = storageRef.child("images/${file.lastPathSegment}")
+        val uploadTask = riversRef.putFile(file)
+
+        val urlTask = uploadTask.continueWithTask { task ->
+            if (!task.isSuccessful) {
+                task.exception?.let {
+                    throw it
+                }
+            }
+            riversRef.downloadUrl
+        }.addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                val downloadUri = task.result
+                println("content download url =$downloadUri")
+                message.jsonObject.put(Constants.message,downloadUri)
+                WebSocketClient.webSocket?.send(message.jsonObject.toString())
+            } else {
+                // Handle failures
+                // ...
+            }
+        }
+    }
+
+    suspend fun URLdownloadFile( context: Context, msg: Message): File?{
+        try {
+            val url = URL(msg.message)
+            val messageType = msg.messageType
+            val contentType = when(messageType){
+                 MESSAGE_TYPE_IMAGE ->"/Images"
+                "audio" ->"/Audios"
+                else -> "/Images"
+            }
+
+            val extension = when(messageType){
+                MESSAGE_TYPE_IMAGE ->"jpeg"
+                "audio" ->"wav"
+                else -> "jpeg"
+            }
+            val time = System.currentTimeMillis()
+            val fileName = "${msg.senderId}_$time.$extension"
+
+            val connection = url.openConnection()
+            connection.connect()
+
+            val inputStream = connection.getInputStream()
+            val bitmap = BitmapFactory.decodeStream(inputStream)
+
+            val directory = context.getExternalFilesDir(null)
+            val file = File("$directory/Chat",contentType )
+            file.mkdirs()
+
+            val filepath = File(file,fileName)
+
+            FileOutputStream(filepath).use { outputStream ->
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
+            }
+
+            return filepath
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return null
+    }
 }

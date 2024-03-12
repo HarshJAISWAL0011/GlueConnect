@@ -4,6 +4,7 @@ import androidx.lifecycle.LiveData
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.example.SendersWithLastMessage
@@ -21,9 +22,8 @@ import kotlinx.coroutines.flow.Flow
         @Delete
         suspend  fun deleteSender(sender: Sender)
 
-
         @Query("Select * from sender WHERE EMAIL =:email")
-        fun getSender(email: String): Sender
+        fun getSender(email: String): Sender?
 
         @Query("Select * from sender")
         fun getAllSenders(): Flow<List<Sender>>

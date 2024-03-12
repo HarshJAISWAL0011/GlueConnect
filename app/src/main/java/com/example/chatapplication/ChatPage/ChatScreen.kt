@@ -1,10 +1,18 @@
 package com.example.chatapplication.ChatPage
 
+import android.annotation.SuppressLint
+import android.content.Context
+import android.content.Intent
+import android.content.Intent.ACTION_OPEN_DOCUMENT
+import android.graphics.Bitmap
+import android.net.Uri
+import android.os.Environment
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,51 +22,82 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.IconButton
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Send
+import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import coil.compose.AsyncImage
+import coil.request.ErrorResult
+import coil.request.ImageRequest
 import com.example.chatapplication.R
 import com.example.chatapplication.db.Message
 import com.example.util.util
+import com.example.util.util.saveImageToExternalStorage
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 
+lateinit var bottomSheetVisible:MutableState<Boolean>
+lateinit var chatViewModel: ChatViewModel
+lateinit var context: Context
 @Composable
-fun ChatsContentList(chatViewModel: ChatViewModel, messageListSize:Int, addSelected:(data: Message)->Unit, removeSelected:(data:Message)->Unit, onLongClick:(data:Message)->Unit){
+fun ChatsContentList(
+    context2: Context, viewMode: ChatViewModel, messageListSize:Int, addSelected:(data: Message)->Unit,
+    removeSelected:(data:Message)->Unit, onLongClick:(data:Message)->Unit, defaultText: String,
+    onMessageSend:(message:Message)->Unit ){
 
+    context = context2
+    chatViewModel = viewMode
     val chatList = chatViewModel.chatListState.collectAsState()
     val listState = rememberLazyListState()
     var islongClickEnable by remember {
@@ -77,7 +116,7 @@ fun ChatsContentList(chatViewModel: ChatViewModel, messageListSize:Int, addSelec
         Column(modifier = Modifier.padding(start = 8.dp, end = 8.dp,top=8.dp, bottom = 5.dp)) {
             LazyColumn(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
                 state = listState,
                 reverseLayout = true
             ) {
@@ -87,7 +126,7 @@ fun ChatsContentList(chatViewModel: ChatViewModel, messageListSize:Int, addSelec
                     }
 
                     if(islongClickEnable == false) bubbleSelected =false
-                    ChatBubble(it.message, it.isSender == 1,it.sentTime,bubbleSelected,{
+                    ChatBubble(it,bubbleSelected,{
                         // onclick
                         if(islongClickEnable) {
                             if (bubbleSelected) {
@@ -110,23 +149,37 @@ fun ChatsContentList(chatViewModel: ChatViewModel, messageListSize:Int, addSelec
                     }
                 }
             }
-            sendMessageBox {
-               chatViewModel.addMessage(Message(0,chatViewModel.senderId,it,1,System.currentTimeMillis(),System.currentTimeMillis()))
+            var dt by remember {
+                mutableStateOf("")
             }
+            dt = defaultText
+            sendMessageBox(defaultText, onSend = onMessageSend)
         }
     }
 
 }
 
 @Composable
-fun sendMessageBox(onSend: (text:String)->Unit){
+fun sendMessageBox(defaultText:String,onSend: (msg: Message)->Unit){
     val containerColor = colorResource(id = R.color.textfeild_bg_color)
-    var messageText by remember { mutableStateOf("") }
+    var messageText by remember { mutableStateOf(defaultText) }
+     bottomSheetVisible = remember { mutableStateOf(false) }
 
+        showBottomSheet(onSend)
+
+    LaunchedEffect(defaultText){
+        messageText = defaultText
+    }
+
+
+    println("default text $defaultText and message = $messageText")
+//    messageText = defaultText
+//    messageText =
 
     Box(modifier = Modifier
         .clip(RoundedCornerShape(18.dp))
         .background(color = containerColor)
+
     ) {
         Row (){
 
@@ -134,7 +187,10 @@ fun sendMessageBox(onSend: (text:String)->Unit){
 
             TextField(
                 value = messageText,
-                onValueChange = { messageText = it },
+                onValueChange = {
+                    messageText = it
+                    println("default text inside--> $defaultText and message = $messageText")
+                },
                 maxLines = 5,
                 placeholder = { Text("Enter your message here")},
                 modifier = Modifier
@@ -143,13 +199,13 @@ fun sendMessageBox(onSend: (text:String)->Unit){
                     .fillMaxWidth()
                 ,
                 colors = TextFieldDefaults.colors(
-//                            focusedTextColor = back,
                     focusedContainerColor = containerColor1,
                     unfocusedContainerColor = containerColor1,
                     disabledContainerColor = containerColor1,
                     focusedIndicatorColor = Color.Transparent,
                     unfocusedIndicatorColor = Color.Transparent,
                     focusedTextColor = Color.Black,
+                    unfocusedTextColor = Color.Black,
                     focusedPlaceholderColor = Color.Gray,
                     unfocusedPlaceholderColor = Color.Gray,
                     cursorColor = colorResource(id = R.color.primary)
@@ -165,7 +221,8 @@ fun sendMessageBox(onSend: (text:String)->Unit){
                                 .scale(scaleX = -1f, scaleY = 1f)
                                 .rotate(0f)
                                 .padding(5.dp)
-                                .align(Alignment.CenterVertically),
+                                .align(Alignment.CenterVertically)
+                                .clickable { bottomSheetVisible.value = true },
                             tint = colorResource(id = R.color.primary_variant)
                         )
                         Spacer(modifier = Modifier.width(10.dp))
@@ -176,7 +233,12 @@ fun sendMessageBox(onSend: (text:String)->Unit){
                                 .background(colorResource(id = R.color.primary))
                                 .align(Alignment.CenterVertically)
                                 .clickable {
-                                    onSend(messageText)
+                                    if (messageText.isNotEmpty()) {
+                                        val time =System.currentTimeMillis()
+                                        var msg = Message(chatViewModel.senderId+time, chatViewModel.senderId,"text",
+                                            messageText,0,time,time)
+                                        onSend(msg)
+                                    }
                                     messageText = ""
                                 }
 
@@ -200,100 +262,318 @@ fun sendMessageBox(onSend: (text:String)->Unit){
     }
 }
 
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun ChatBubble(message: String, isSender: Boolean, time: Long,isBubbleSelected: Boolean,onClick:()->Unit, onLongClick: () -> Unit) {
-    var time = util.getHourAndMinuteFromTimestamp(time)
+fun ChatBubble(messageObj: Message,isBubbleSelected: Boolean,onClick:()->Unit,
+               onLongClick: () -> Unit) {
+    var time = util.getHourAndMinuteFromTimestamp(messageObj.sentTime)
+    var isReceived = messageObj.isReceived == 1
     var isExceedingOneLine by remember { mutableStateOf(false) }
     var showTimestampOnSameColumn by remember { mutableStateOf(true) }
-    var colorBg =  if(isBubbleSelected) colorResource(id = R.color.primary_variant) else  if(isSender) colorResource(id = R.color.primary) else colorResource(id = R.color.textfeild_bg_color)
-    var colorText = if(isSender) Color.White else Color.Black
-    var colorTimestamp = if(isSender) colorResource(id = R.color.white_variant) else colorResource(id = R.color.black_variant)
-    val startPadding = if(isSender) 65.dp else 8.dp
-    val endPadding = if(isSender) 8.dp else 65.dp
-    val selectedColor= if (isBubbleSelected) colorResource(id = R.color.primary_variant) else Color.Transparent
+    var colorBg =
+        if (isReceived) colorResource(id = R.color.textfeild_bg_color) else  colorResource(id = R.color.primary)
+    var colorText = if (isReceived) Color.Black.copy(0.6f)  else  Color.White.copy(0.9f)
+    var colorTimestamp =
+        if (isReceived) colorResource(id = R.color.black_variant)  else colorResource(id = R.color.white_variant)
+    val startPadding = if (isReceived) 8.dp else  65.dp
+    val endPadding = if (isReceived)  65.dp else 8.dp
+    val selectedColor =
+        if (isBubbleSelected) colorResource(id = R.color.primary_variant) else Color.Transparent
     var bubblePadding = PaddingValues(
-      start = startPadding, end = endPadding
+        start = startPadding, end = endPadding
     )
-    Row(
+    var alpha = if (isBubbleSelected) 0.6f else 1f
+
+    Box(
         modifier = Modifier
-
             .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
             .background(selectedColor)
-
-            .padding(bubblePadding)
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick) ,
-        horizontalArrangement =if(isSender) Arrangement.End else Arrangement.Start,
+            .padding(vertical = 3.dp)
+            .alpha(alpha)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
     ) {
-
-        Box(
+        Row(
             modifier = Modifier
-                .clip(
-                    RoundedCornerShape(
-                        topStart = 10.dp,
-                        topEnd = 10.dp,
-                        bottomStart = if (isSender) 10.dp else 0.dp,
-                        bottomEnd = if (isSender) 0.dp else 10.dp
-                    )
-                )
-                .background(colorBg)
-                .padding(start = 8.dp, top = 8.dp, end = 3.dp)
+                .fillMaxWidth()
+                .padding(bubblePadding),
+            horizontalArrangement = if (isReceived) Arrangement.Start else Arrangement.End ,
         ) {
-            Column {
 
-                Row() {
+            if (messageObj.messageType == "text") {
+                Box(
+                    modifier = Modifier
+                        .clip(
+                            RoundedCornerShape(
+                                topStart = 10.dp,
+                                topEnd = 10.dp,
+                                bottomStart = if (isReceived) 0.dp  else 10.dp,
+                                bottomEnd = if (isReceived) 10.dp else  0.dp
+                            )
+                        )
+                        .background(colorBg)
+                        .padding(start = 8.dp, top = 8.dp, end = 3.dp)
+                ) {
+                    Column {
 
-                    Text(
-                        text = message,
-                        textAlign = TextAlign.Start,
-                        modifier = Modifier
-                            .padding(bottom = 8.dp)
-                            .align(Alignment.CenterVertically)
-                            .weight(1f, false),
-                        color = colorText,
-                        onTextLayout = { textLayoutResult ->
-                            var lineCount = textLayoutResult.lineCount
-                            val firstLineEnd = textLayoutResult.getLineEnd(0)
-                            val lastLineEnd = textLayoutResult.getLineEnd(textLayoutResult.lineCount - 1)
-                            val firstLineLength = message.substring(0, firstLineEnd).length
-                            val lastLineLength = message.substring(firstLineEnd *(lineCount-1), lastLineEnd).length
+                        Row() {
+                            if (messageObj.message.isEmpty()) {
+                                Row(modifier = Modifier.background(color = colorText)) {
+                                    Icon(
+                                        Icons.Outlined.Delete,
+                                        contentDescription = "",
+                                        modifier = Modifier
+                                            .background(colorBg),
+                                        tint = Color.DarkGray
+                                    )
+                                    Text(
+                                        text = "This message is deleted",
+                                        textAlign = TextAlign.Start,
+                                        modifier = Modifier
+                                            .background(colorBg)
+                                            .padding(bottom = 8.dp)
+                                            .align(Alignment.CenterVertically)
+                                            .weight(1f, false),
+                                        color = Color.DarkGray,
+                                        fontStyle = FontStyle.Italic
+                                    )
+                                }
+                            }
+                            else {
+                                Text(
+                                    text = messageObj.message,
+                                    textAlign = TextAlign.Start,
+                                    modifier = Modifier
+                                        .padding(bottom = 8.dp)
+                                        .align(Alignment.CenterVertically)
+                                        .weight(1f, false),
+                                    color = colorText,
+                                    onTextLayout = { textLayoutResult ->
+                                        var lineCount = textLayoutResult.lineCount
+                                        val firstLineEnd = textLayoutResult.getLineEnd(0)
+                                        val lastLineEnd =
+                                            textLayoutResult.getLineEnd(textLayoutResult.lineCount - 1)
+                                        val firstLineLength =
+                                            messageObj.message.substring(0, firstLineEnd).length
+                                        val lastLineLength = messageObj.message.substring(
+                                            firstLineEnd * (lineCount - 1),
+                                            lastLineEnd
+                                        ).length
 
-                            isExceedingOneLine = lineCount > 1
-                            if(isExceedingOneLine)
-                                showTimestampOnSameColumn = firstLineLength - lastLineLength > 8
+                                        isExceedingOneLine = lineCount > 1
+                                        if (isExceedingOneLine)
+                                            showTimestampOnSameColumn =
+                                                firstLineLength - lastLineLength > 8
+                                    }
+                                )
+                            }
+                            if (!isExceedingOneLine)
+                                Text(
+                                    text = time,
+                                    modifier = Modifier
+                                        .padding(end = 5.dp, start = 5.dp, bottom = 2.dp)
+                                        .align(Alignment.Bottom),
+                                    fontSize = 10.sp,
+                                    color = colorTimestamp
+                                )
+
                         }
-                    )
-                    if (!isExceedingOneLine)
+                        if (isExceedingOneLine && !showTimestampOnSameColumn) {
+                            Text(
+                                text = time,
+                                modifier = Modifier
+                                    .padding(end = 5.dp, start = 5.dp, bottom = 2.dp)
+                                    .align(Alignment.End),
+                                fontSize = 10.sp,
+                                color = colorTimestamp
+                            )
+                        }
+                    }
+                    if (showTimestampOnSameColumn && isExceedingOneLine)
                         Text(
                             text = time,
                             modifier = Modifier
-                                .padding(end = 5.dp, start = 5.dp, bottom = 2.dp)
-                                .align(Alignment.Bottom),
+                                .padding(end = 5.dp, start = 5.dp, bottom = 5.dp)
+                                .align(Alignment.BottomEnd),
                             fontSize = 10.sp,
                             color = colorTimestamp
                         )
-
-                }
-                if(isExceedingOneLine && !showTimestampOnSameColumn){
-                    Text(
-                        text = "12:00 AM",
-                        modifier = Modifier
-                            .padding(end = 5.dp, start = 5.dp, bottom = 2.dp)
-                            .align(Alignment.End),
-                        fontSize = 10.sp,
-                        color = colorTimestamp
-                    )
                 }
             }
-            if(showTimestampOnSameColumn && isExceedingOneLine)
-                Text(
-                    text = "12:00 AM",
-                    modifier = Modifier
-                        .padding(end = 5.dp, start = 5.dp, bottom = 5.dp)
-                        .align(Alignment.BottomEnd),
-                    fontSize = 10.sp,
-                    color = colorTimestamp
-                )
+            else if (messageObj.messageType == "image" ) {
+
+                Card(
+                        modifier = Modifier
+                            .clickable {
+                                val intent = Intent(context, ShowImage::class.java)
+                                intent.putExtra("filepath", messageObj.message)
+                                context.startActivity(intent)
+                            }
+                            .clip(
+                                RoundedCornerShape(
+                                    topStart = 10.dp,
+                                    topEnd = 10.dp,
+                                    bottomStart =  10.dp,
+                                    bottomEnd = 10.dp
+                                )
+                            )
+                            .background(colorBg)
+                            .padding(start = 4.dp, top = 5.dp, end = 4.dp, bottom = 5.dp)
+                    ) {
+
+
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current).data(File(messageObj.message))
+                                .listener(object : ImageRequest.Listener {
+                                    override fun onStart(request: ImageRequest) {
+                                        // Image loading started
+                                    }
+
+                                    override fun onError(
+                                        request: ImageRequest,
+                                        result: ErrorResult
+                                    ) {
+                                        super.onError(request, result)
+                                        println("test error while loading image = ${result.throwable.message}")
+                                    }
+
+                                    override fun onCancel(request: ImageRequest) {
+                                        // Image loading cancelled
+                                    }
+                                }).build(),
+                            contentDescription = "",
+                        contentScale = ContentScale.Fit,
+                            placeholder = painterResource(id = R.drawable.profile_placeholder),
+                            error = painterResource(id = R.drawable.delete_illus),
+
+                            modifier = Modifier.size(width = 200.dp, height = 250.dp)
+                        )
+                    }
+                }
+            }
+    }
+}
+
+@SuppressLint("SuspiciousIndentation")
+@Composable
+@OptIn( ExperimentalMaterial3Api::class)
+fun showBottomSheet(onSend: (msg: Message) -> Unit) {
+    val sheetState = rememberModalBottomSheetState()
+    val selectImageLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent(),
+        onResult = { uri: Uri? ->
+            CoroutineScope(Dispatchers.IO).launch {
+                if (uri != null) {
+                    val imgDir = File(Environment.getExternalStorageDirectory(), "/Chat/Images")
+                    val timeStamp: String =
+                        SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+                    val fileName = "JPEG_${timeStamp}.jpeg"
+                    val imageFile = File(imgDir, fileName)
+
+
+                    val time = System.currentTimeMillis()
+                    var job = CoroutineScope(Dispatchers.IO).launch {
+                        saveImageToExternalStorage(context, uri, fileName)
+                    }
+                    job.join()
+
+                    onSend(
+                        Message(
+                            chatViewModel.senderId + time, chatViewModel.senderId, "image",
+                            "$imageFile", 0, time, time
+                        )
+                    )
+
+                    println("test uri = $uri")
+                }
+            }
+        }
+    )
+
+
+
+        if (bottomSheetVisible.value) {
+            ModalBottomSheet(
+                onDismissRequest = {
+                    bottomSheetVisible.value = false
+                },
+                dragHandle = {},
+                shape = RoundedCornerShape(20.dp),
+                sheetState = sheetState,
+                modifier = Modifier
+                    .offset(y = (-100).dp)
+                    .padding(20.dp)
+                   ,
+                containerColor = colorResource(id = R.color.primary_light),
+                scrimColor = Color.Transparent
+
+            ) {
+                Spacer(modifier = Modifier.height(20.dp))
+                Row(modifier = Modifier
+                    .padding(20.dp)
+                    .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+
+                    IconButton(onClick = { selectImageLauncher.launch("image/*") }) {
+                        Icon(
+                            Icons.Default.LocationOn,
+                            contentDescription = "",
+                            tint = Color.White,
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(colorResource(id = R.color.primary))
+                                .padding(10.dp)
+                        )
+                    }
+
+                    IconButton(onClick = { /*TODO*/ }) {
+                        Icon(
+                            Icons.Default.LocationOn,
+                            contentDescription = "",
+                            tint = Color.White,
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(colorResource(id = R.color.primary))
+                                .padding(10.dp)
+                        )
+                    }
+
+                    IconButton(onClick = { /*TODO*/ }) {
+                        Icon(
+                            Icons.Default.LocationOn,
+                            contentDescription = "",
+                            tint = Color.White,
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(colorResource(id = R.color.primary))
+                                .padding(10.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+}
+
+@Composable
+fun fullSizeImage(uri: Uri){
+    Dialog(
+        onDismissRequest = {}
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black),
+            contentAlignment = Alignment.Center
+        ) {
+            AsyncImage(
+                model =  uri,
+                contentDescription = "",
+                contentScale = ContentScale.FillBounds,
+                modifier = Modifier.fillMaxSize()
+            )
         }
     }
 }
