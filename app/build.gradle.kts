@@ -99,6 +99,7 @@ dependencies {
     implementation ("com.squareup.retrofit2:converter-gson:2.9.0")
     implementation("io.coil-kt:coil-compose:2.6.0")
     implementation("com.google.firebase:firebase-storage")
+    implementation("com.airbnb.android:lottie-compose:6.0.1")
 
 
 

@@ -1,5 +1,9 @@
 package com.example.chatapplication.Repository
 
+import com.example.Constants.FOLDER_AUDIOS
+import com.example.Constants.FOLDER_IMAGES
+import com.example.Constants.MESSAGE_TYPE_AUDIO
+import com.example.Constants.MESSAGE_TYPE_IMAGE
 import com.example.Constants.SQLoffsetValue
 import com.example.SendMessage
 import com.example.chatapplication.WebSocket.WebSocketClient
@@ -22,9 +26,11 @@ class ChatRepository (var senderId: String ,var database: ChatDatabase){
             message.message,
             message.messageId
         ) // should send message id not pK
-        if (message.messageType.equals("image")) {
-            uploadFile(messageFormat)
-        } else {
+        if (message.messageType.equals(MESSAGE_TYPE_IMAGE)) {
+            uploadFile(messageFormat, FOLDER_IMAGES)
+        } else if (message.messageType.equals(MESSAGE_TYPE_AUDIO)) {
+            uploadFile(messageFormat, FOLDER_AUDIOS)
+        }else{
             WebSocketClient.webSocket?.send(messageFormat.jsonObject.toString())
         }
     }

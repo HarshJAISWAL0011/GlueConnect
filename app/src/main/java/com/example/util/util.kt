@@ -5,6 +5,7 @@ import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.media.MediaRecorder
 import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
@@ -55,6 +56,13 @@ object util {
         return dateFormat.format(calendar.time)
     }
 
+
+    fun getMinSecond(milliseconds: Int): String {
+//        val hours = (milliseconds / (1000 * 60 * 60)) % 24
+        val minutes = (milliseconds / (1000 * 60)) % 60
+        val seconds = (milliseconds / 1000) % 60
+        return String.format("%02d:%02d",  minutes, seconds)
+    }
 
 
     suspend fun saveImageToExternalStorage(context: Context, uri: Uri,fileName: String) {
@@ -109,18 +117,18 @@ object util {
         }
     }
 
-     fun uploadFile(message: SendMessage){
+     fun uploadFile(message: SendMessage, location: String){
         println("Uploading file")
         val storage = Firebase.storage
         val storageRef = storage.reference
         var file = Uri.fromFile(File(message.jsonObject.getString(Constants.message)))
-        val riversRef = storageRef.child("images/${file.lastPathSegment}")
+        val riversRef = storageRef.child("${location}/${file.lastPathSegment}")
         val uploadTask = riversRef.putFile(file)
 
         val urlTask = uploadTask.continueWithTask { task ->
             if (!task.isSuccessful) {
                 task.exception?.let {
-                    throw it
+                    println("failure uploading file ${task.exception?.message}")
                 }
             }
             riversRef.downloadUrl
@@ -131,8 +139,7 @@ object util {
                 message.jsonObject.put(Constants.message,downloadUri)
                 WebSocketClient.webSocket?.send(message.jsonObject.toString())
             } else {
-                // Handle failures
-                // ...
+                    println("failure uploading file ${task.exception?.message}")
             }
         }
     }
@@ -177,4 +184,6 @@ object util {
         }
         return null
     }
+
+
 }

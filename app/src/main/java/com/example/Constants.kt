@@ -30,6 +30,8 @@ object Constants {
     val MESSAGE_TYPE_IMAGE = "image"
     val MESSAGE_TYPE_TEXT = "text"
     val MESSAGE_TYPE_AUDIO = "audio"
+    val FOLDER_IMAGES ="Images"
+    val FOLDER_AUDIOS ="Audios"
     val notif_users_pending ="users_pending"
     val total_message_pending ="message_pending0"
     val FIRESTORE_USERS ="users"

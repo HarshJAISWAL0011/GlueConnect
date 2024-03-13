@@ -5,14 +5,21 @@ import android.content.Context
 import android.content.Intent
 import android.content.Intent.ACTION_OPEN_DOCUMENT
 import android.graphics.Bitmap
+import android.graphics.drawable.shapes.Shape
+import android.media.MediaPlayer
+import android.media.MediaRecorder
 import android.net.Uri
 import android.os.Environment
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.indication
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +27,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -33,14 +41,20 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.IconButton
+import androidx.compose.material.LinearProgressIndicator
+import androidx.compose.material.ProgressIndicatorDefaults
+import androidx.compose.material.SliderColors
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Send
+import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -61,27 +75,45 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.times
 import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
 import coil.request.ErrorResult
 import coil.request.ImageRequest
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieClipSpec
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.LottieConstants
+import com.airbnb.lottie.compose.rememberLottieComposition
+import com.example.Constants.MESSAGE_TYPE_AUDIO
+import com.example.Constants.MESSAGE_TYPE_IMAGE
 import com.example.chatapplication.R
 import com.example.chatapplication.db.Message
 import com.example.util.util
+import com.example.util.util.getMinSecond
 import com.example.util.util.saveImageToExternalStorage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
+import java.io.FileNotFoundException
+import java.lang.RuntimeException
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -89,7 +121,9 @@ import java.util.Locale
 
 lateinit var bottomSheetVisible:MutableState<Boolean>
 lateinit var chatViewModel: ChatViewModel
+var audioLocation: File? = null
 lateinit var context: Context
+private var recorder: MediaRecorder? = null
 @Composable
 fun ChatsContentList(
     context2: Context, viewMode: ChatViewModel, messageListSize:Int, addSelected:(data: Message)->Unit,
@@ -164,8 +198,12 @@ fun sendMessageBox(defaultText:String,onSend: (msg: Message)->Unit){
     val containerColor = colorResource(id = R.color.textfeild_bg_color)
     var messageText by remember { mutableStateOf(defaultText) }
      bottomSheetVisible = remember { mutableStateOf(false) }
+     var showAudio by remember { mutableStateOf(true) }
+    var isRecording by remember { mutableStateOf(false) }
 
-        showBottomSheet(onSend)
+
+
+    showBottomSheet(onSend)
 
     LaunchedEffect(defaultText){
         messageText = defaultText
@@ -189,7 +227,10 @@ fun sendMessageBox(defaultText:String,onSend: (msg: Message)->Unit){
                 value = messageText,
                 onValueChange = {
                     messageText = it
-                    println("default text inside--> $defaultText and message = $messageText")
+                    if (it.length > 0)
+                        showAudio =false
+                    else
+                        showAudio = true
                 },
                 maxLines = 5,
                 placeholder = { Text("Enter your message here")},
@@ -234,9 +275,16 @@ fun sendMessageBox(defaultText:String,onSend: (msg: Message)->Unit){
                                 .align(Alignment.CenterVertically)
                                 .clickable {
                                     if (messageText.isNotEmpty()) {
-                                        val time =System.currentTimeMillis()
-                                        var msg = Message(chatViewModel.senderId+time, chatViewModel.senderId,"text",
-                                            messageText,0,time,time)
+                                        val time = System.currentTimeMillis()
+                                        var msg = Message(
+                                            chatViewModel.senderId + time,
+                                            chatViewModel.senderId,
+                                            "text",
+                                            messageText,
+                                            0,
+                                            time,
+                                            time
+                                        )
                                         onSend(msg)
                                     }
                                     messageText = ""
@@ -255,6 +303,51 @@ fun sendMessageBox(defaultText:String,onSend: (msg: Message)->Unit){
                             )
                         }
                     }
+                },
+
+                    leadingIcon = {
+                        if (showAudio) {
+                        IconButton(onClick = {
+                            isRecording = !isRecording
+
+                            val rootDir = File(Environment.getExternalStorageDirectory(), "/Chat/Audios")
+                            rootDir.mkdirs()
+
+
+                            if (isRecording) {
+                                val audioFileName = "${chatViewModel.senderId}_${ System.currentTimeMillis()}.wav"
+                                 audioLocation = File(rootDir,audioFileName)
+                                startRecording(audioLocation!!)
+                            } else {
+                                stopRecording()
+                                val time = System.currentTimeMillis()
+                                val senderId = chatViewModel.senderId
+                                val msg = Message("$senderId$time",senderId,MESSAGE_TYPE_AUDIO,audioLocation.toString()
+                                ,0,time,time)
+                                onSend(msg)
+                            }
+                        }) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.audio),
+                                contentDescription = "",
+                                tint = colorResource(
+                                    id = R.color.primary
+                                ),
+                                modifier =  Modifier.size(26.dp)
+                            )
+                        }
+                    }else{
+                            IconButton(onClick = {}) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.keyboard),
+                                    contentDescription = "",
+                                    tint = colorResource(
+                                        id = R.color.primary
+                                    ),
+                                    modifier =  Modifier.size(26.dp)
+                                )
+                            }
+                        }
                 }
             )
 
@@ -308,8 +401,8 @@ fun ChatBubble(messageObj: Message,isBubbleSelected: Boolean,onClick:()->Unit,
                             RoundedCornerShape(
                                 topStart = 10.dp,
                                 topEnd = 10.dp,
-                                bottomStart = if (isReceived) 0.dp  else 10.dp,
-                                bottomEnd = if (isReceived) 10.dp else  0.dp
+                                bottomStart = if (isReceived) 0.dp else 10.dp,
+                                bottomEnd = if (isReceived) 10.dp else 0.dp
                             )
                         )
                         .background(colorBg)
@@ -401,9 +494,10 @@ fun ChatBubble(messageObj: Message,isBubbleSelected: Boolean,onClick:()->Unit,
                         )
                 }
             }
-            else if (messageObj.messageType == "image" ) {
+            else if (messageObj.messageType == MESSAGE_TYPE_IMAGE ) {
 
-                Card(
+                Box() {
+                    Card(
                         modifier = Modifier
                             .clickable {
                                 val intent = Intent(context, ShowImage::class.java)
@@ -414,7 +508,7 @@ fun ChatBubble(messageObj: Message,isBubbleSelected: Boolean,onClick:()->Unit,
                                 RoundedCornerShape(
                                     topStart = 10.dp,
                                     topEnd = 10.dp,
-                                    bottomStart =  10.dp,
+                                    bottomStart = 10.dp,
                                     bottomEnd = 10.dp
                                 )
                             )
@@ -422,9 +516,9 @@ fun ChatBubble(messageObj: Message,isBubbleSelected: Boolean,onClick:()->Unit,
                             .padding(start = 4.dp, top = 5.dp, end = 4.dp, bottom = 5.dp)
                     ) {
 
-
                         AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current).data(File(messageObj.message))
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(File(messageObj.message))
                                 .listener(object : ImageRequest.Listener {
                                     override fun onStart(request: ImageRequest) {
                                         // Image loading started
@@ -443,14 +537,144 @@ fun ChatBubble(messageObj: Message,isBubbleSelected: Boolean,onClick:()->Unit,
                                     }
                                 }).build(),
                             contentDescription = "",
-                        contentScale = ContentScale.Fit,
+                            contentScale = ContentScale.Fit,
                             placeholder = painterResource(id = R.drawable.profile_placeholder),
                             error = painterResource(id = R.drawable.delete_illus),
 
-                            modifier = Modifier.size(width = 200.dp, height = 250.dp)
+                            modifier = Modifier.size(width = 200.dp, height = 280.dp)
                         )
                     }
+                    
+                    Text(text = time, modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 14.dp, bottom = 7.dp),
+                        fontSize = 12.sp)
                 }
+                }
+            else if(messageObj.messageType == MESSAGE_TYPE_AUDIO){
+
+                var mediaPlayer: MediaPlayer? by remember { mutableStateOf(null) }
+                var audioDuration by remember { mutableStateOf(1) }
+                var audioPosition by remember { mutableStateOf(0) }
+                var isPlaying by remember { mutableStateOf(false) }
+                var currentPosition by remember { mutableStateOf(0) }
+                var lottieIteration by remember { mutableStateOf(1) }
+                val scope = rememberCoroutineScope()
+                var audioBoxColor = if(isReceived)colorResource(id = R.color.textfeild_bg_color) else colorResource(id = R.color.primary_variant)
+                var sliderTrackcolor = if(isReceived) colorResource(id = R.color.primary).copy(0.2f) else Color.White.copy(0.15f)
+                var iconTint = if(isReceived) colorResource(id = R.color.primary) else Color.White
+                var audioTextColor = if(isReceived) colorResource(id = R.color.black_variant) else Color.White
+                var lottieFile = if (isReceived) LottieCompositionSpec.RawRes(R.raw.wave_lottie2) else LottieCompositionSpec.RawRes(R.raw.wave_lottie)
+
+
+                LaunchedEffect(Unit ){
+                    try {
+                        mediaPlayer = MediaPlayer().apply {
+                            setDataSource(File(messageObj.message).toString())
+                            prepare()
+                        }
+                        audioDuration = mediaPlayer?.duration ?: 0
+                        mediaPlayer?.setOnCompletionListener {mp ->
+                                isPlaying = false
+                                audioPosition = 0
+                                mp.seekTo(0)
+                            lottieIteration = 0
+
+                        }
+
+                    }catch (e: FileNotFoundException){println("Exception while playing ${e.message}")}
+                }
+
+                Box(modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .height(62.dp)
+                    .background(audioBoxColor)
+                    .padding(3.dp),
+                    contentAlignment = Alignment.Center
+                  ) {
+                    Row {
+
+                        Card(modifier = Modifier
+
+                            .padding(5.dp)
+                            .background(color = audioBoxColor)) {
+                            val composition by rememberLottieComposition(lottieFile)
+
+
+                            LottieAnimation(
+                                speed = 1.5f,
+                                isPlaying = isPlaying,
+                                modifier = Modifier
+                                    .background(
+                                        color = audioBoxColor)
+                                    .size(44.dp),
+                                composition = composition,
+                                reverseOnRepeat = true,
+                                iterations = 500,
+
+
+                            )
+
+                        }
+                        IconButton(onClick = {
+                            if (mediaPlayer == null) {
+                                println("file location = ${messageObj.message}")
+                                mediaPlayer = MediaPlayer().apply {
+                                    setDataSource(File(messageObj.message).toString())
+                                    prepare()
+                                }
+                                audioDuration = mediaPlayer?.duration ?: 0
+                            }
+                            if (!isPlaying) {
+                                mediaPlayer?.start()
+                                isPlaying = true
+                                lottieIteration = Integer.MAX_VALUE
+                                audioDuration = mediaPlayer?.duration ?: 0
+                                audioPosition = mediaPlayer?.currentPosition ?: 0
+                                currentPosition = mediaPlayer?.currentPosition ?: 0
+
+                                scope.launch {
+                                    while (isPlaying) {
+                                        audioPosition = mediaPlayer?.currentPosition ?: 0
+                                        println("Media current pos = ${mediaPlayer?.currentPosition}")
+                                        delay(40)
+                                    }
+                                }
+                            } else {
+                                mediaPlayer?.pause()
+                                isPlaying = false
+                                lottieIteration = 0
+                            }
+                        }
+                        ) {
+                            if(isPlaying)
+                            Icon(painter = painterResource(id = R.drawable.pause), contentDescription ="",
+                                tint = iconTint, modifier = Modifier.size(20.dp))
+                            else
+                                Icon(painter = painterResource(id = R.drawable.play), contentDescription ="",
+                                    tint = iconTint, modifier = Modifier.size(20.dp))
+                        }
+                        Box(modifier = Modifier
+                            .height(55.dp)
+                            .padding(end = 5.dp)){
+
+                            Indicator(audioPosition.toFloat()/audioDuration, iconTint,sliderTrackcolor)
+
+                             Text(text =  getMinSecond( audioDuration ) , fontSize = 12.sp, color =  audioTextColor ,fontWeight = FontWeight.W500, modifier = Modifier
+                                 .align(
+                                     Alignment.BottomStart
+                                 )
+                                 .padding(start = 5.dp))
+
+                            Text(text = time, fontSize = 12.sp, color =  audioTextColor,fontWeight = FontWeight.W500, modifier = Modifier
+                                .align(
+                                    Alignment.BottomEnd
+                                )
+                                .padding(end = 5.dp))
+                        }
+                    }
+                }
+            }
             }
     }
 }
@@ -516,12 +740,28 @@ fun showBottomSheet(onSend: (msg: Message) -> Unit) {
                     horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
 
-                    IconButton(onClick = { selectImageLauncher.launch("image/*") }) {
+                    IconButton(onClick = {
+                        selectImageLauncher.launch("image/*")
+                        bottomSheetVisible.value =false}) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.camera),
+                            contentDescription = "",
+                            tint = Color.White,
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(CircleShape)
+                                .background(colorResource(id = R.color.primary))
+                                .padding(8.dp)
+                        )
+                    }
+
+                    IconButton(onClick = { /*TODO*/ }) {
                         Icon(
                             Icons.Default.LocationOn,
                             contentDescription = "",
                             tint = Color.White,
                             modifier = Modifier
+                                .size(48.dp)
                                 .clip(CircleShape)
                                 .background(colorResource(id = R.color.primary))
                                 .padding(10.dp)
@@ -534,18 +774,7 @@ fun showBottomSheet(onSend: (msg: Message) -> Unit) {
                             contentDescription = "",
                             tint = Color.White,
                             modifier = Modifier
-                                .clip(CircleShape)
-                                .background(colorResource(id = R.color.primary))
-                                .padding(10.dp)
-                        )
-                    }
-
-                    IconButton(onClick = { /*TODO*/ }) {
-                        Icon(
-                            Icons.Default.LocationOn,
-                            contentDescription = "",
-                            tint = Color.White,
-                            modifier = Modifier
+                                .size(48.dp)
                                 .clip(CircleShape)
                                 .background(colorResource(id = R.color.primary))
                                 .padding(10.dp)
@@ -557,23 +786,138 @@ fun showBottomSheet(onSend: (msg: Message) -> Unit) {
 
 }
 
+
+fun startRecording(audioLocation: File) {
+    try {
+    recorder = MediaRecorder().apply {
+        setAudioSource(MediaRecorder.AudioSource.MIC)
+        setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP)
+        setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB)
+        setOutputFile(audioLocation.absolutePath)
+        prepare()
+        start()
+    }
+    }catch (e: FileNotFoundException){println("Exception ${e.message}")}
+    catch (e: RuntimeException){println("Exception ${e.message}")}
+}
+
+fun stopRecording() {
+    recorder?.apply {
+        stop()
+        release()
+    }
+    recorder = null
+
+}
+
+@Preview
 @Composable
-fun fullSizeImage(uri: Uri){
-    Dialog(
-        onDismissRequest = {}
+private fun check() {
+    val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.wave_lottie))
+    Box(modifier = Modifier
+        .clip(RoundedCornerShape(12.dp))
+        .height(62.dp)
+        .background(colorResource(id = R.color.textfeild_bg_color))
+        .padding(3.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black),
-            contentAlignment = Alignment.Center
-        ) {
-            AsyncImage(
-                model =  uri,
-                contentDescription = "",
-                contentScale = ContentScale.FillBounds,
-                modifier = Modifier.fillMaxSize()
-            )
+        Row {
+            Card(modifier = Modifier
+
+                .padding(5.dp)
+                .background(color = colorResource(id = R.color.textfeild_bg_color))) {
+                val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.wave_lottie2))
+
+
+                LottieAnimation(
+                    speed = 1.5f,
+                    isPlaying = false,
+                    modifier = Modifier
+                        .background(
+                            color = colorResource(
+                                id = R.color.textfeild_bg_color
+                            )
+                        )
+                        .size(44.dp),
+                    composition = composition,
+                    reverseOnRepeat = true,
+                    iterations = 500,
+
+
+                    )
+
+            }
+            IconButton(onClick = {
+            }
+            ) {
+
+                    Icon(painter = painterResource(id = R.drawable.play), contentDescription ="",
+                        tint = colorResource(id = R.color.primary), modifier = Modifier.size(20.dp))
+            }
+            Box(modifier = Modifier
+                .height(50.dp)
+                .padding(end = 5.dp)){
+
+//                Indicator(0.5f)
+
+                Text(text =  getMinSecond( 6000 ) , fontSize = 12.sp, color =  colorResource(id = R.color.black_variant), modifier = Modifier
+                    .align(
+                        Alignment.BottomStart
+                    )
+                    .padding(start = 5.dp))
+
+                Text(text = "time", fontSize = 12.sp, color =  colorResource(id = R.color.black_variant), modifier = Modifier
+                    .align(
+                        Alignment.BottomEnd
+                    )
+                    .padding(end = 5.dp))
+            }
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun Indicator(position:Float, thumbColor: Color, trackColor: Color){
+
+    var sliderPosition by remember { mutableStateOf(0f) }
+    sliderPosition = position
+
+    val interactionSource = remember {
+
+        MutableInteractionSource()
+    }
+
+
+    Column {
+
+        Slider(
+            modifier = Modifier.semantics { contentDescription = "Localized Description" },
+            value = sliderPosition,
+            colors = SliderDefaults.colors(inactiveTrackColor = trackColor , activeTrackColor = colorResource(id = R.color.primary)),
+            onValueChange = {
+                sliderPosition = it
+                            },
+            valueRange = 0f..1f,
+            steps = 0,
+            interactionSource = interactionSource,
+            onValueChangeFinished = {
+                // launch some business logic update with the state you hold
+            },
+            thumb = {
+
+                Box(
+                    modifier = Modifier
+                        .offset(y = 4.dp)
+                        .size(12.dp)
+                        .clip(CircleShape)
+                        .background(thumbColor),
+                    contentAlignment = Alignment.Center
+                ){
+
+
+                }
+            },
+        )
     }
 }
