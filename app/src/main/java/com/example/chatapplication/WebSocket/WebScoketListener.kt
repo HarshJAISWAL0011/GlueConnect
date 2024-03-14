@@ -5,6 +5,7 @@ import android.content.Context
 import android.util.Log
 import android.widget.Toast
 import com.example.Constants
+import com.example.Constants.MESSAGE_TYPE_AUDIO
 import com.example.Constants.MESSAGE_TYPE_IMAGE
 import com.example.NewConnection
 import com.example.chatapplication.Repository.ConversationRepository
@@ -85,9 +86,10 @@ object webSocketListener : WebSocketListener() {
                         .updateSender(senderObj.copy(newMessageCount = senderObj.newMessageCount + 1))
                 }
 
+                println("test messageOBj= $messageObj")
 
                 if (messageObj == null) {
-                    if(messageType == MESSAGE_TYPE_IMAGE){
+                    if(messageType == MESSAGE_TYPE_IMAGE || messageType == MESSAGE_TYPE_AUDIO){
                         val location = URLdownloadFile(context,receivedMessage)
                         println("location of saving file = $location")
                         ChatDatabase.getDatabase(context).messageDao().insertMessage(receivedMessage.copy(message = location.toString()))
@@ -96,7 +98,6 @@ object webSocketListener : WebSocketListener() {
                     ChatDatabase.getDatabase(context).messageDao().insertMessage(receivedMessage)
                 } else if (messageObj != null) {
                     ChatDatabase.getDatabase(context).messageDao().editMessage(receivedMessage)
-
                 }
 
             }

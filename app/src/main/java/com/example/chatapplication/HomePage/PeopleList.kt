@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -46,8 +47,11 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.Constants.MESSAGE_TYPE_AUDIO
+import com.example.Constants.MESSAGE_TYPE_IMAGE
 import com.example.SendersWithLastMessage
 import com.example.chatapplication.R
 import com.example.chatapplication.R.drawable.profile_placeholder
@@ -74,7 +78,7 @@ private val fontStyleContent= TextStyle(
 
 
 @Composable
-fun IndividualChatList(peopleViewModel: PeopleViewModel, context:Context){
+fun ChatList(peopleViewModel: PeopleViewModel, context:Context){
     val peopleList = peopleViewModel.peopleListState.collectAsState()
 
     val intent =Intent(context, ChatActivity::class.java)
@@ -112,7 +116,9 @@ fun ChatItem(sender: SendersWithLastMessage, onClick: ()->Unit){
     val time = formatTime(sender.receiveTime)
 
     Row (
-        modifier = Modifier.clickable { onClick() }.padding(horizontal = 20.dp, vertical = 20.dp)
+        modifier = Modifier
+            .clickable { onClick() }
+            .padding(horizontal = 20.dp, vertical = 20.dp)
     ){
         Image(painter = painterResource(id = profile_placeholder), contentDescription ="", contentScale = ContentScale.Fit, modifier = Modifier
             .size(45.dp)
@@ -124,10 +130,64 @@ fun ChatItem(sender: SendersWithLastMessage, onClick: ()->Unit){
             , modifier = Modifier
                 .weight(0.9f)
                 .background(color = colorResource(id = R.color.background)) )
-                 {
-        Text(text = sender.name, style = if(sender.newMessageCount == 0) fontStyleHeading else fontStyleHeadingNewMsg,  )
+        {
+            Text(
+                text = sender.name,
+                style = if (sender.newMessageCount == 0) fontStyleHeading else fontStyleHeadingNewMsg,
+            )
             Spacer(modifier = Modifier.height(11.dp))
-            sender.last_message?.let { Text(text = it, style =fontStyleContent, modifier = Modifier.padding(bottom = 4.dp) ) }
+
+
+            sender.last_message?.let {
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                ) {
+
+                    if (sender.messageType == MESSAGE_TYPE_IMAGE) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.picture_file),
+                            contentDescription = "",
+                            modifier = Modifier.size(14.dp),
+                            tint = Color.Gray
+                        )
+                        Spacer(modifier = Modifier.width(5.dp))
+                        Text(
+                            text = "Image",
+                            style = fontStyleContent,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
+                    else if (sender.messageType == MESSAGE_TYPE_AUDIO) {
+
+                        Icon(
+                            painter = painterResource(id = R.drawable.audio_file),
+                            contentDescription = "",
+                            modifier = Modifier.size(14.dp),
+                            tint = Color.Gray
+                        )
+                        Spacer(modifier = Modifier.width(5.dp))
+                        Text(
+                            text = "Audio",
+                            style = fontStyleContent,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
+                    else
+                        Text(
+                            text = it,
+                            style = fontStyleContent,
+                            modifier = Modifier.padding(bottom = 4.dp),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                }
+            }
         }
         Column( modifier = Modifier
             .fillMaxHeight(1f)

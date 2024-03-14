@@ -113,6 +113,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileNotFoundException
+import java.io.IOException
 import java.lang.RuntimeException
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -583,6 +584,8 @@ fun ChatBubble(messageObj: Message,isBubbleSelected: Boolean,onClick:()->Unit,
                         }
 
                     }catch (e: FileNotFoundException){println("Exception while playing ${e.message}")}
+                    catch (e: ClassCastException){println("Exception while playing ${e.message}")}
+                    catch (e: IOException){println("Exception while playing ${e.message}")}
                 }
 
                 Box(modifier = Modifier
@@ -618,12 +621,16 @@ fun ChatBubble(messageObj: Message,isBubbleSelected: Boolean,onClick:()->Unit,
                         }
                         IconButton(onClick = {
                             if (mediaPlayer == null) {
+                                try {
                                 println("file location = ${messageObj.message}")
                                 mediaPlayer = MediaPlayer().apply {
                                     setDataSource(File(messageObj.message).toString())
                                     prepare()
                                 }
                                 audioDuration = mediaPlayer?.duration ?: 0
+                                }
+                                catch (e: FileNotFoundException){println("Exception while playing ${e.message}")}
+                                catch (e: ClassCastException){println("Exception while playing ${e.message}")}
                             }
                             if (!isPlaying) {
                                 mediaPlayer?.start()

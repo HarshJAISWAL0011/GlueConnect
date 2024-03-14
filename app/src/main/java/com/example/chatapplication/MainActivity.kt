@@ -54,21 +54,20 @@ import androidx.room.withTransaction
 import com.example.Constants
 import com.example.SendersWithLastMessage
 import com.example.chatapplication.HomePage.BottomNavItem
-import com.example.chatapplication.HomePage.IndividualChatList
+import com.example.chatapplication.HomePage.ChatList
 import com.example.chatapplication.HomePage.StatusChatList
 import com.example.chatapplication.HomePage.getBottomNavItems
-import com.example.chatapplication.Notification.saveIntSharedPref
-import com.example.chatapplication.Notification.saveListSharedPref
+import com.example.util.Notification.saveIntSharedPref
+import com.example.util.Notification.saveListSharedPref
 import com.example.chatapplication.PeopleBook.PeopleViewModel
 import com.example.chatapplication.PeopleBook.PeopleViewModelFactory
 import com.example.chatapplication.db.ChatDatabase
 import com.example.chatapplication.db.Sender
-import com.example.chatapplication.firebase.FirestoreDb
 import com.example.chatapplication.Repository.ConversationRepository
 import com.example.chatapplication.ui.theme.ChatApplicationTheme
 import com.example.chatapplication.WebSocket.WebSocketClient
-import com.example.chatapplication.db.Message
 import com.example.chatapplication.firebase.FirestoreDb.getNewMessageFirestore
+import com.example.util.Notification
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.google.android.gms.tasks.OnCompleteListener
 import com.google.firebase.messaging.FirebaseMessaging
@@ -77,7 +76,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
-import java.lang.Thread.sleep
 
 class MainActivity : ComponentActivity() {
 
@@ -243,7 +241,7 @@ private val WRITE_EXTERNAL_STORAGE_REQUEST_CODE = 123
 
             // Log and toast
             val msg = token
-            Log.d(TAG, msg)
+            println("firebase token =$msg")
         })
     }
 
@@ -303,7 +301,7 @@ fun NavigationHost(navController: NavHostController, context: Context, peopleVie
     NavHost(navController, startDestination = BottomNavItem.Home.route) {
         composable(BottomNavItem.Home.route) {
 
-            IndividualChatList(peopleViewModel,context)
+            ChatList(peopleViewModel,context)
         }
         composable(BottomNavItem.Group.route) { /* Search Screen UI */ }
         composable(BottomNavItem.Profile.route) { /* Profile Screen UI */ }

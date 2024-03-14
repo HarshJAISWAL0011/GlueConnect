@@ -28,10 +28,10 @@ import kotlinx.coroutines.flow.Flow
         @Query("Select * from sender")
         fun getAllSenders(): Flow<List<Sender>>
 
-    @Query("SELECT sender.email AS senderId, sender.*, latest_message.message AS last_message, latest_message.receiveTime " +
+    @Query("SELECT sender.email AS senderId, sender.*, latest_message.message AS last_message, latest_message.receiveTime, latest_message.messageType " +
             "FROM sender " +
             "LEFT JOIN (" +
-            "    SELECT senderId, message, receiveTime " +
+            "    SELECT senderId, message, receiveTime, messageType " +
             "    FROM messages AS m1 " +
             "    WHERE receiveTime = (" +
             "        SELECT MAX(receiveTime) " +

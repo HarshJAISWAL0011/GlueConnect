@@ -51,11 +51,12 @@ class NewConnection(id:String){
  data class SendersWithLastMessage( var id: Int=0,
                                    var name: String,
                                    var email: String,
+                                   val messageType: String,
                                    var newMessageCount: Int,
                                     var last_message: String? = "",
      var receiveTime: Long?=0)
 
-class SendMessage(sendToId:String, senderId: String, message: String,id:String){
+class SendMessage(sendToId:String, senderId: String, message: String,id:String, messageType:String){
     val jsonObject = JSONObject()
     init {
         jsonObject.put(type, new_message)
@@ -64,6 +65,7 @@ class SendMessage(sendToId:String, senderId: String, message: String,id:String){
         jsonObject.put(timestamp, System.currentTimeMillis())
         jsonObject.put(Constants.message, message)
         jsonObject.put(Constants.messageId,id )
+        jsonObject.put(Constants.messageType,messageType )
     }
 }
 

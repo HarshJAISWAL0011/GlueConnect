@@ -24,11 +24,12 @@ class ChatRepository (var senderId: String ,var database: ChatDatabase){
             message.senderId,
             "968",
             message.message,
-            message.messageId
+            message.messageId,
+            message.messageType
         ) // should send message id not pK
-        if (message.messageType.equals(MESSAGE_TYPE_IMAGE)) {
+        if (message.messageType == MESSAGE_TYPE_IMAGE) {
             uploadFile(messageFormat, FOLDER_IMAGES)
-        } else if (message.messageType.equals(MESSAGE_TYPE_AUDIO)) {
+        } else if (message.messageType == MESSAGE_TYPE_AUDIO) {
             uploadFile(messageFormat, FOLDER_AUDIOS)
         }else{
             WebSocketClient.webSocket?.send(messageFormat.jsonObject.toString())
@@ -37,7 +38,7 @@ class ChatRepository (var senderId: String ,var database: ChatDatabase){
 
     suspend fun update(message: Message) {
         database.messageDao().editMessage(message)
-        val messageFormat = SendMessage(message.senderId,"968",message.message,message.messageId) // should send message id not pK
+        val messageFormat = SendMessage(message.senderId,"968",message.message,message.messageId,message.messageType) // should send message id not pK
         WebSocketClient.webSocket?.send(messageFormat.jsonObject.toString())
     }
 

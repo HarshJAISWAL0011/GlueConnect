@@ -1,4 +1,4 @@
-package com.example.chatapplication
+package com.example.util
 
 import android.annotation.SuppressLint
 import android.app.NotificationChannel
@@ -11,6 +11,8 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.example.Constants
 import com.example.chatapplication.ChatPage.ChatActivity
+import com.example.chatapplication.MainActivity
+import com.example.chatapplication.R
 import com.google.common.reflect.TypeToken
 import com.google.gson.Gson
 

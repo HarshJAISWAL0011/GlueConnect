@@ -1,36 +1,28 @@
 package com.example.util
 
-import android.content.ContentResolver
 import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.media.MediaRecorder
 import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
-import androidx.core.content.ContextCompat.getString
 import com.example.Constants
+import com.example.Constants.MESSAGE_TYPE_AUDIO
 import com.example.Constants.MESSAGE_TYPE_IMAGE
 import com.example.SendMessage
-import com.example.chatapplication.R
 import com.example.chatapplication.WebSocket.WebSocketClient
-import com.example.chatapplication.db.ChatDatabase
 import com.example.chatapplication.db.Message
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.ktx.storage
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
 import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.Calendar
-import java.util.Date
 import java.util.Locale
 
 object util {
@@ -161,26 +153,36 @@ object util {
             }
             val time = System.currentTimeMillis()
             val fileName = "${msg.senderId}_$time.$extension"
+            val directory = Environment.getExternalStorageDirectory()
+            val file = File("$directory/Chat/Received",contentType )
+            file.mkdirs()
+
+            val filepath = File(file,fileName)
 
             val connection = url.openConnection()
             connection.connect()
 
             val inputStream = connection.getInputStream()
-            val bitmap = BitmapFactory.decodeStream(inputStream)
 
-            val directory = context.getExternalFilesDir(null)
-            val file = File("$directory/Chat",contentType )
-            file.mkdirs()
-
-            val filepath = File(file,fileName)
-
-            FileOutputStream(filepath).use { outputStream ->
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
+            if(messageType == MESSAGE_TYPE_AUDIO) {
+                FileOutputStream(filepath).use { outputStream ->
+                    inputStream.copyTo(outputStream)
+                }
+            }else if(messageType == MESSAGE_TYPE_IMAGE) {
+                val bitmap = BitmapFactory.decodeStream(inputStream)
+                FileOutputStream(filepath).use { outputStream ->
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
+                }
             }
 
+            withContext(Dispatchers.IO) {// Just in case you call it from main thread
+                inputStream.close()
+            }
             return filepath
         } catch (e: Exception) {
             e.printStackTrace()
+            println("Exception in downloading file ${e.message}")
+
         }
         return null
     }
