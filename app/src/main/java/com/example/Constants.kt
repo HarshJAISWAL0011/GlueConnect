@@ -40,37 +40,3 @@ object Constants {
     val FIRESTORE_REGISTRATION_TOKEN ="token"
 }
 
-class NewConnection(id:String){
-    val jsonObject = JSONObject()
-    init {
-        jsonObject.put(type, new_connection)
-        jsonObject.put(senderId, id)
-    }
-}
-
- data class SendersWithLastMessage( var id: Int=0,
-                                   var name: String,
-                                   var email: String,
-                                   val messageType: String,
-                                   var newMessageCount: Int,
-                                    var last_message: String? = "",
-     var receiveTime: Long?=0)
-
-class SendMessage(sendToId:String, senderId: String, message: String,id:String, messageType:String){
-    val jsonObject = JSONObject()
-    init {
-        jsonObject.put(type, new_message)
-        jsonObject.put(sendtoId, sendToId)
-        jsonObject.put(Constants.senderId, senderId)
-        jsonObject.put(timestamp, System.currentTimeMillis())
-        jsonObject.put(Constants.message, message)
-        jsonObject.put(Constants.messageId,id )
-        jsonObject.put(Constants.messageType,messageType )
-    }
-}
-
-class Message(var receivedFrom:String,var message: String,var timestamp: Long,var isSender: Boolean){}
-
-data class DeleteMessageData(
-    val userId: String,
-)

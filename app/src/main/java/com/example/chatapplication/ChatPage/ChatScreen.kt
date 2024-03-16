@@ -10,6 +10,7 @@ import android.media.MediaPlayer
 import android.media.MediaRecorder
 import android.net.Uri
 import android.os.Environment
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
@@ -102,6 +103,7 @@ import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.Constants.MESSAGE_TYPE_AUDIO
 import com.example.Constants.MESSAGE_TYPE_IMAGE
+import com.example.chatapplication.GroupPage.GroupChatViewModel
 import com.example.chatapplication.R
 import com.example.chatapplication.db.Message
 import com.example.util.util
@@ -109,6 +111,7 @@ import com.example.util.util.getMinSecond
 import com.example.util.util.saveImageToExternalStorage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
@@ -121,18 +124,87 @@ import java.util.Locale
 
 
 lateinit var bottomSheetVisible:MutableState<Boolean>
-lateinit var chatViewModel: ChatViewModel
+var userId: String = "968"
 var audioLocation: File? = null
 lateinit var context: Context
 private var recorder: MediaRecorder? = null
+
+
+@Composable
+fun GroupChatContentList(  context2: Context, viewModel: GroupChatViewModel, messageListSize:Int, addSelected:(data: Message)->Unit,
+                           removeSelected:(data:Message)->Unit, onLongClick:(data:Message)->Unit, defaultText: String,
+                           onMessageSend:(message:Message)->Unit){
+
+    context = context2
+
+    val chatList = viewModel.chatListState.collectAsState()
+    val listState = rememberLazyListState()
+    var islongClickEnable by remember {
+        mutableStateOf(false)
+    }
+    if(messageListSize == 0) {
+        islongClickEnable = false
+        println("size of list islongclick enabled = $islongClickEnable")
+    }
+
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = colorResource(id = R.color.background),
+
+        ) {
+        Column(modifier = Modifier.padding(start = 8.dp, end = 8.dp,top=8.dp, bottom = 5.dp)) {
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                state = listState,
+                reverseLayout = true
+            ) {
+                itemsIndexed(chatList.value) {idx,it->
+                    var bubbleSelected by remember {
+                        mutableStateOf(false)
+                    }
+
+                    if(!islongClickEnable) bubbleSelected =false
+                    var msg = Message(it.messageId,it.senderId?:"",it.messageType,it.message,it.isReceived,it.receiveTime,it.sentTime)
+                    ChatBubble(msg,it.senderName?:"", bubbleSelected, context,{
+                        // onclick
+                        if(islongClickEnable) {
+                            if (bubbleSelected) {
+                                removeSelected(msg)
+                            } else {
+                                addSelected(msg)
+                            }
+                            bubbleSelected = !bubbleSelected
+                        }else{
+                            bubbleSelected = false
+                        }
+                    }){
+                        // onLongClick
+                        islongClickEnable = true
+                        onLongClick(msg)
+                        bubbleSelected = true}
+
+                    if(idx == chatList.value.size -5) { // pagination
+                        viewModel.loadOldMessage()
+                    }
+                }
+            }
+            var dt by remember {
+                mutableStateOf("")
+            }
+            dt = defaultText
+            sendMessageBox(defaultText, onSend = onMessageSend)
+        }
+    }
+}
+
 @Composable
 fun ChatsContentList(
-    context2: Context, viewMode: ChatViewModel, messageListSize:Int, addSelected:(data: Message)->Unit,
+    context2: Context, chatViewModel: ChatViewModel, messageListSize:Int, addSelected:(data: Message)->Unit,
     removeSelected:(data:Message)->Unit, onLongClick:(data:Message)->Unit, defaultText: String,
     onMessageSend:(message:Message)->Unit ){
 
     context = context2
-    chatViewModel = viewMode
     val chatList = chatViewModel.chatListState.collectAsState()
     val listState = rememberLazyListState()
     var islongClickEnable by remember {
@@ -161,7 +233,7 @@ fun ChatsContentList(
                     }
 
                     if(islongClickEnable == false) bubbleSelected =false
-                    ChatBubble(it,bubbleSelected,{
+                    ChatBubble(it,"", bubbleSelected, context,{
                         // onclick
                         if(islongClickEnable) {
                             if (bubbleSelected) {
@@ -204,7 +276,7 @@ fun sendMessageBox(defaultText:String,onSend: (msg: Message)->Unit){
 
 
 
-    showBottomSheet(onSend)
+    showBottomSheet(onSend, context )
 
     LaunchedEffect(defaultText){
         messageText = defaultText
@@ -264,7 +336,8 @@ fun sendMessageBox(defaultText:String,onSend: (msg: Message)->Unit){
                                 .rotate(0f)
                                 .padding(5.dp)
                                 .align(Alignment.CenterVertically)
-                                .clickable { bottomSheetVisible.value = true },
+                                .clickable { bottomSheetVisible.value = true
+                                         },
                             tint = colorResource(id = R.color.primary_variant)
                         )
                         Spacer(modifier = Modifier.width(10.dp))
@@ -278,8 +351,8 @@ fun sendMessageBox(defaultText:String,onSend: (msg: Message)->Unit){
                                     if (messageText.isNotEmpty()) {
                                         val time = System.currentTimeMillis()
                                         var msg = Message(
-                                            chatViewModel.senderId + time,
-                                            chatViewModel.senderId,
+                                            userId + time,
+                                            userId,
                                             "text",
                                             messageText,
                                             0,
@@ -316,13 +389,13 @@ fun sendMessageBox(defaultText:String,onSend: (msg: Message)->Unit){
 
 
                             if (isRecording) {
-                                val audioFileName = "${chatViewModel.senderId}_${ System.currentTimeMillis()}.wav"
+                                val audioFileName = "${userId}_${ System.currentTimeMillis()}.wav"
                                  audioLocation = File(rootDir,audioFileName)
                                 startRecording(audioLocation!!)
                             } else {
                                 stopRecording()
                                 val time = System.currentTimeMillis()
-                                val senderId = chatViewModel.senderId
+                                val senderId = userId
                                 val msg = Message("$senderId$time",senderId,MESSAGE_TYPE_AUDIO,audioLocation.toString()
                                 ,0,time,time)
                                 onSend(msg)
@@ -359,8 +432,8 @@ fun sendMessageBox(defaultText:String,onSend: (msg: Message)->Unit){
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun ChatBubble(messageObj: Message,isBubbleSelected: Boolean,onClick:()->Unit,
-               onLongClick: () -> Unit) {
+fun ChatBubble(messageObj: Message,senderName: String,isBubbleSelected: Boolean,context: Context,onClick:()->Unit,
+               onLongClick: () -> Unit, ) {
     var time = util.getHourAndMinuteFromTimestamp(messageObj.sentTime)
     var isReceived = messageObj.isReceived == 1
     var isExceedingOneLine by remember { mutableStateOf(false) }
@@ -620,19 +693,11 @@ fun ChatBubble(messageObj: Message,isBubbleSelected: Boolean,onClick:()->Unit,
 
                         }
                         IconButton(onClick = {
-                            if (mediaPlayer == null) {
-                                try {
-                                println("file location = ${messageObj.message}")
-                                mediaPlayer = MediaPlayer().apply {
-                                    setDataSource(File(messageObj.message).toString())
-                                    prepare()
-                                }
-                                audioDuration = mediaPlayer?.duration ?: 0
-                                }
-                                catch (e: FileNotFoundException){println("Exception while playing ${e.message}")}
-                                catch (e: ClassCastException){println("Exception while playing ${e.message}")}
+
+                            if(mediaPlayer == null){
+                                Toast.makeText(context,"Something went wrong",Toast.LENGTH_LONG).show()
                             }
-                            if (!isPlaying) {
+                             else if (!isPlaying ) {
                                 mediaPlayer?.start()
                                 isPlaying = true
                                 lottieIteration = Integer.MAX_VALUE
@@ -665,7 +730,13 @@ fun ChatBubble(messageObj: Message,isBubbleSelected: Boolean,onClick:()->Unit,
                             .height(55.dp)
                             .padding(end = 5.dp)){
 
-                            Indicator(audioPosition.toFloat()/audioDuration, iconTint,sliderTrackcolor)
+                            val pos = if (audioDuration > 0 && audioPosition > 0) {
+                                audioPosition.toFloat() / audioDuration
+                            } else {
+                                0f // Set pos to 0 if audioDuration is 0
+                            }
+
+                             Indicator(pos, iconTint,sliderTrackcolor)
 
                              Text(text =  getMinSecond( audioDuration ) , fontSize = 12.sp, color =  audioTextColor ,fontWeight = FontWeight.W500, modifier = Modifier
                                  .align(
@@ -689,8 +760,9 @@ fun ChatBubble(messageObj: Message,isBubbleSelected: Boolean,onClick:()->Unit,
 @SuppressLint("SuspiciousIndentation")
 @Composable
 @OptIn( ExperimentalMaterial3Api::class)
-fun showBottomSheet(onSend: (msg: Message) -> Unit) {
+fun showBottomSheet(onSend: (msg: Message) -> Unit, context: Context) {
     val sheetState = rememberModalBottomSheetState()
+
     val selectImageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
         onResult = { uri: Uri? ->
@@ -711,7 +783,7 @@ fun showBottomSheet(onSend: (msg: Message) -> Unit) {
 
                     onSend(
                         Message(
-                            chatViewModel.senderId + time, chatViewModel.senderId, "image",
+                            userId + time,userId, "image",
                             "$imageFile", 0, time, time
                         )
                     )

@@ -27,9 +27,9 @@ data class Message(
     @PrimaryKey
     val messageId: String,
     val senderId: String,
-    val messageType: String,
+    val messageType: String?="text",
     var message: String,
-    val isReceived: Int,
-    val receiveTime: Long,
-    val sentTime: Long
+    val isReceived: Int = 1,
+    val receiveTime: Long = 0,
+    val sentTime: Long = 0
 )

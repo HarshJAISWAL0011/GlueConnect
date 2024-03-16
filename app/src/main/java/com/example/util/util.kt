@@ -10,7 +10,6 @@ import android.provider.MediaStore
 import com.example.Constants
 import com.example.Constants.MESSAGE_TYPE_AUDIO
 import com.example.Constants.MESSAGE_TYPE_IMAGE
-import com.example.SendMessage
 import com.example.chatapplication.WebSocket.WebSocketClient
 import com.example.chatapplication.db.Message
 import com.google.firebase.ktx.Firebase
@@ -39,6 +38,7 @@ object util {
     }
 
     fun formatTime(timestamp: Long?): String {
+        if(timestamp == null) return ""
         val calendar = Calendar.getInstance().apply {
             if (timestamp != null) {
                 timeInMillis = timestamp
@@ -58,8 +58,6 @@ object util {
 
 
     suspend fun saveImageToExternalStorage(context: Context, uri: Uri,fileName: String) {
-
-
 
             try {
                 val imgDir = File(Environment.getExternalStorageDirectory(),"/Chat/Images")

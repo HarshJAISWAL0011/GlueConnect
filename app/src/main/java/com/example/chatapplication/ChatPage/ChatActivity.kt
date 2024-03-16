@@ -64,11 +64,16 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.ViewModelProvider
 import androidx.room.withTransaction
 import com.example.Constants.MY_ID
+import com.example.chatapplication.GroupPage.GroupChatVMFactory
+import com.example.chatapplication.GroupPage.GroupChatViewModel
 import com.example.chatapplication.ui.theme.ChatApplicationTheme
 import com.example.chatapplication.R
 import com.example.chatapplication.Repository.ChatRepository
+import com.example.chatapplication.Repository.GroupChatRepo
 import com.example.chatapplication.db.ChatDatabase
 import com.example.chatapplication.db.Message
+import com.example.chatapplication.db.groupdb.GroupDatabase
+import com.example.chatapplication.db.groupdb.GroupMessage
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -77,27 +82,39 @@ import kotlinx.coroutines.launch
 
 class ChatActivity : ComponentActivity() {
 
-    lateinit var chatViewModelFactory: ChatViewModelFactory
     lateinit var chatViewModel: ChatViewModel
+    lateinit var groupViewModel: GroupChatViewModel
     lateinit var database: ChatDatabase
+    lateinit var groupDatabase: GroupDatabase
     lateinit var selectedMessageList: MutableList<Message>
     lateinit var selectedMessageListSize: MutableState<Int>
     lateinit var showActions: MutableState<Boolean>
     lateinit var defaultText: MutableState<String>
-    lateinit  var senderId: String
-
-
+     var senderId: String? = null
+    var groupId: String? = null
+    var isGroup: Boolean = false;
+    var displayName: String? = "";
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
 
-         senderId = intent.getStringExtra("id")!!
+         senderId = intent.getStringExtra("id")
+        groupId = intent.getStringExtra("groupId")
+        isGroup = intent.getBooleanExtra("isGroup",false)
+        displayName = intent.getStringExtra("displayName")
+
         database = ChatDatabase.getDatabase(this)
-        chatViewModelFactory =
-            ChatViewModelFactory(senderId!!, ChatRepository(senderId = senderId, database))
+        groupDatabase = GroupDatabase.getDatabase(this)
+
+        var  chatViewModelFactory =
+            ChatViewModelFactory(senderId, ChatRepository(senderId = senderId?:"", database))
         chatViewModel = ViewModelProvider(this, chatViewModelFactory).get(ChatViewModel::class.java)
+
+        var  groupChatVMFactory =
+            GroupChatVMFactory(groupId, GroupChatRepo(groupId?:"" , groupDatabase))
+        groupViewModel = ViewModelProvider(this, groupChatVMFactory).get(GroupChatViewModel::class.java)
 
         setContent {
             ChatApplicationTheme {
@@ -169,34 +186,79 @@ class ChatActivity : ComponentActivity() {
                         }
                     ) {
                         Surface(modifier = Modifier.padding(it)) {
-                            ChatsContentList(this,chatViewModel, selectedMessageListSize.value,
-                                {
-                                    // add in list on click
-                                    selectedMessageList.add(it)
-                                    selectedMessageListSize.value++
-                                },
-                                {
-                                    // remove from list on click
-                                    selectedMessageList.remove(it)
-                                    if (selectedMessageList.size == 0)
-                                        showActions.value = false
-                                    selectedMessageListSize.value--
+                            if(isGroup && groupId != null){
+                                GroupChatContentList(this, groupViewModel, selectedMessageListSize.value,
+                                                 {
+                                                     // add in list on click
+                                                     selectedMessageList.add(it)
+                                                     selectedMessageListSize.value++
+                                                 },
+                                                 {
+                                                     // remove from list on click
+                                                     selectedMessageList.remove(it)
+                                                     if (selectedMessageList.size == 0)
+                                                         showActions.value = false
+                                                     selectedMessageListSize.value--
 
-                                },
-                                {
-                                    // Long click
-                                    selectedMessageList.add(it)
-                                    showActions.value = true
-                                    selectedMessageListSize.value++
-                                }, defaultText.value,
-                                {
-                                    // update message
-                                    GlobalScope.launch {
-                                        if (selectedMessageListSize.value > 0) {
-                                            var msg = selectedMessageList.get(0).copy(message = it.message)
-                                            chatViewModel.updateMessage(msg)
-                                        } else {
-                                            // insert new message
+                                                 },
+                                                 {
+                                                     // Long click
+                                                     selectedMessageList.add(it)
+                                                     showActions.value = true
+                                                     selectedMessageListSize.value++
+                                                 }, defaultText.value,
+                                                 {
+                                                     // update message
+                                                     GlobalScope.launch {
+                                                         if (selectedMessageListSize.value > 0) {
+
+                                                             var grpMsg = GroupMessage(it.messageId,it.senderId,it.messageType?:""
+                                                                                       ,it.message,it.isReceived,it.receiveTime,it.sentTime,groupId!!)
+                                                             groupViewModel.updateMessage(grpMsg)
+                                                         } else {
+
+                                                             groupViewModel.addMessage( GroupMessage(it.messageId,it.senderId,it.messageType?:""
+                                                                                                     ,it.message,it.isReceived,it.receiveTime,it.sentTime,groupId!!))
+                                                         }
+
+
+                                                         selectedMessageList.clear()
+                                                         selectedMessageListSize.value = 0;
+                                                         showActions.value = false
+                                                         defaultText.value = ""
+                                                     }
+                                                 })
+                            }
+                            else {
+                                ChatsContentList(this, chatViewModel, selectedMessageListSize.value,
+                                                 {
+                                                     // add in list on click
+                                                     selectedMessageList.add(it)
+                                                     selectedMessageListSize.value++
+                                                 },
+                                                 {
+                                                     // remove from list on click
+                                                     selectedMessageList.remove(it)
+                                                     if (selectedMessageList.size == 0)
+                                                         showActions.value = false
+                                                     selectedMessageListSize.value--
+
+                                                 },
+                                                 {
+                                                     // Long click
+                                                     selectedMessageList.add(it)
+                                                     showActions.value = true
+                                                     selectedMessageListSize.value++
+                                                 }, defaultText.value,
+                                                 {
+                                                     // update message
+                                                     GlobalScope.launch {
+                                                         if (selectedMessageListSize.value > 0) {
+                                                             var msg = selectedMessageList.get(0)
+                                                                 .copy(message = it.message)
+                                                             chatViewModel.updateMessage(msg)
+                                                         } else {
+                                                             // insert new message
 //                                            var msg = Message(
 //                                                System.currentTimeMillis().toString()+MY_ID,
 //                                                chatViewModel.senderId,
@@ -206,18 +268,18 @@ class ChatActivity : ComponentActivity() {
 //                                                System.currentTimeMillis(),
 //                                                System.currentTimeMillis()
 //                                            )
-                                            chatViewModel.addMessage(it)
-                                        }
+                                                             chatViewModel.addMessage(it)
+                                                         }
 
 
-                                    selectedMessageList.clear()
-                                    selectedMessageListSize.value = 0;
-                                    showActions.value = false
-                                        defaultText.value = ""
-                                    }
-                                })
+                                                         selectedMessageList.clear()
+                                                         selectedMessageListSize.value = 0;
+                                                         showActions.value = false
+                                                         defaultText.value = ""
+                                                     }
+                                                 })
 
-
+                            }
                         }
                     }
 
@@ -279,22 +341,49 @@ class ChatActivity : ComponentActivity() {
 
     fun deleteMessage(isForMe: Boolean) {
         CoroutineScope(Dispatchers.IO).launch {
-            if (isForMe) {
-                selectedMessageList.forEach {
-                    database.withTransaction {
-                        database.messageDao().deleteMessage(it)
+            if (isGroup && groupId != null) {
+
+                if (isForMe) {
+                    selectedMessageList.forEach {
+                        database.withTransaction {
+                            var msg = GroupMessage(it.messageId,it.senderId,it.messageType?:"",it.message,
+                                                   it.isReceived,it.receiveTime,it.sentTime,groupId!!)
+                            groupDatabase.groupMessageDao().deleteMessage(msg)
+                        }
                     }
+                    selectedMessageList.clear()
+                    println("size of list = " + selectedMessageList.size)
+                    selectedMessageListSize.value = 0;
+                    showActions.value = false
+
+                } else {
+                    val lastMsg = selectedMessageList.get(0);
+                    var msg = GroupMessage(lastMsg.messageId,lastMsg.senderId,lastMsg.messageType?:"","",
+                                           lastMsg.isReceived,lastMsg.receiveTime,lastMsg.sentTime,groupId!!)
+                    groupViewModel.updateMessage(msg)
+                    selectedMessageList.clear()
+                    selectedMessageListSize.value = 0;
+                    showActions.value = false
                 }
-                selectedMessageList.clear()
-                println("size of list = " + selectedMessageList.size)
-                selectedMessageListSize.value = 0;
-                showActions.value = false
 
             } else {
-              chatViewModel.updateMessage(selectedMessageList.get(0).copy(message = ""))
-                selectedMessageList.clear()
-                selectedMessageListSize.value = 0;
-                showActions.value = false
+                if (isForMe) {
+                    selectedMessageList.forEach {
+                        database.withTransaction {
+                            database.messageDao().deleteMessage(it)
+                        }
+                    }
+                    selectedMessageList.clear()
+                    println("size of list = " + selectedMessageList.size)
+                    selectedMessageListSize.value = 0;
+                    showActions.value = false
+
+                } else {
+                    chatViewModel.updateMessage(selectedMessageList.get(0).copy(message = ""))
+                    selectedMessageList.clear()
+                    selectedMessageListSize.value = 0;
+                    showActions.value = false
+                }
             }
         }
     }
@@ -303,9 +392,16 @@ class ChatActivity : ComponentActivity() {
 
     override fun onDestroy() {
         GlobalScope.launch {
-            var senderObj = database.senderDao().getSender(senderId)
-            if (senderObj != null) {
-                database.senderDao().updateSender(senderObj.copy(newMessageCount = 0))
+            if (isGroup) {
+                    val groupObj = groupDatabase.groupDao().getGroup(groupId!!)
+                    if (groupObj != null) {
+                        groupDatabase.groupDao().updateGroup(groupObj.copy(newMessageCount = 0))
+                    }
+            } else {
+                val senderObj = database.senderDao().getSender(senderId!!)
+                if (senderObj != null) {
+                    database.senderDao().updateSender(senderObj.copy(newMessageCount = 0))
+                }
             }
         }
         super.onDestroy()
@@ -340,10 +436,12 @@ class ChatActivity : ComponentActivity() {
                 )
                 Spacer(modifier = Modifier.width(15.dp))
                 Column(verticalArrangement = Arrangement.Center) {
-                    Text(
-                        text = chatViewModel.senderId, fontSize = 17.sp,
-                        color = colorResource(id = R.color.white_variant)
-                    )
+                    displayName?.let {
+                        Text(
+                            text = it, fontSize = 17.sp,
+                            color = colorResource(id = R.color.white_variant)
+                        )
+                    }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = "Online", fontSize = 12.sp,

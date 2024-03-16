@@ -52,7 +52,9 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.room.withTransaction
 import com.example.Constants
-import com.example.SendersWithLastMessage
+import com.example.chatapplication.GroupPage.GroupChatList
+import com.example.chatapplication.GroupPage.GroupListViewModel
+import com.example.chatapplication.GroupPage.GroupVMFactory
 import com.example.chatapplication.HomePage.BottomNavItem
 import com.example.chatapplication.HomePage.ChatList
 import com.example.chatapplication.HomePage.StatusChatList
@@ -64,31 +66,34 @@ import com.example.chatapplication.PeopleBook.PeopleViewModelFactory
 import com.example.chatapplication.db.ChatDatabase
 import com.example.chatapplication.db.Sender
 import com.example.chatapplication.Repository.ConversationRepository
+import com.example.chatapplication.Repository.GroupRepo
 import com.example.chatapplication.ui.theme.ChatApplicationTheme
 import com.example.chatapplication.WebSocket.WebSocketClient
+import com.example.chatapplication.db.groupdb.Group
+import com.example.chatapplication.db.groupdb.GroupDatabase
+import com.example.chatapplication.db.groupdb.GroupMember
+import com.example.chatapplication.db.groupdb.GroupMessage
 import com.example.chatapplication.firebase.FirestoreDb.getNewMessageFirestore
 import com.example.util.Notification
+import com.example.util.SendersWithLastMessage
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.google.android.gms.tasks.OnCompleteListener
 import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
-//    private lateinit var webSocketListener: WebSocketListener
-//    private val okHttpClient = OkHttpClient()
-//    private var webSocket: WebSocket? = null
 private val WRITE_EXTERNAL_STORAGE_REQUEST_CODE = 123
-      lateinit var peopleList : Flow<List<Sender>>
     lateinit  var database: ChatDatabase
+    lateinit  var groupDatabase: GroupDatabase
     lateinit var viewModelFactory: PeopleViewModelFactory
     lateinit  var peopleViewModel: PeopleViewModel
     lateinit  var convRepo: ConversationRepository
-    lateinit  var updatedData: List<SendersWithLastMessage>
+    lateinit  var groupViewModel: GroupListViewModel
+    lateinit  var groupReop: GroupRepo
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -136,7 +141,11 @@ private val WRITE_EXTERNAL_STORAGE_REQUEST_CODE = 123
 
                              viewModelFactory = PeopleViewModelFactory(database,convRepo)
                              peopleViewModel = ViewModelProvider( this,viewModelFactory).get(PeopleViewModel::class.java)
-                            NavigationHost(navController,this,peopleViewModel)
+
+                            var groupVMFactory = GroupVMFactory(groupDatabase,groupReop)
+                            groupViewModel = ViewModelProvider( this,groupVMFactory).get(GroupListViewModel::class.java)
+
+                            NavigationHost(navController,this)
                         }
                     }
 
@@ -145,7 +154,9 @@ private val WRITE_EXTERNAL_STORAGE_REQUEST_CODE = 123
         }
 
         database = ChatDatabase.getDatabase(this)
+        groupDatabase = GroupDatabase.getDatabase(this)
         convRepo = ConversationRepository(database)
+        groupReop = GroupRepo(groupDatabase)
 
 
 
@@ -155,17 +166,27 @@ private val WRITE_EXTERNAL_STORAGE_REQUEST_CODE = 123
 
         GlobalScope.launch {
 
-//            sleep(4000)
-//            FirestoreDb.getNewMessageFirestore("84",database)
-//            database.senderDao().insertNewSender(Sender(0,"harsh","010",1))
+//
             val time = System.currentTimeMillis()
-            database.withTransaction {
-                for (i in 0..30) {
+//            groupDatabase.withTransaction {
+//                for (i in 0..3) {
 
-//                    database.messageDao()
-//                        .insertMessage(Message("010"+i.toString(), "010","text", i.toString(), 0, time + i, time + i))
-                }
-            }
+//                    groupDatabase.groupDao()
+//                        .insertNewGroup(Group(0,"Group Name1", "grp1", 2))
+//            groupDatabase.groupDao()  .insertNewGroup(Group(0,"Group Name2", "grp2", 2))
+//            groupDatabase.groupDao()  .insertNewGroup(Group(0,"Group Name3", "grp3", 2))
+////                }
+////            }
+//            groupDatabase.groupMemberDao().insertNewMember(GroupMember(0,"01","Harsh","grp1",0))
+//            groupDatabase.groupMemberDao().insertNewMember(GroupMember(0,"01","Harsh","grp2",0))
+//            groupDatabase.groupMemberDao().insertNewMember(GroupMember(0,"011","Harsh2","grp1",0))
+//            groupDatabase.groupMemberDao().insertNewMember(GroupMember(0,"012","Harsh3","grp1",0))
+//
+//            groupDatabase.groupMessageDao().insertMessage(GroupMessage("0001","01","text","msg",1,1,1,"grp1"))
+//            groupDatabase.groupMessageDao().insertMessage(GroupMessage("00011","01","text","msg",1,2,2,"grp2"))
+//            groupDatabase.groupMessageDao().insertMessage(GroupMessage("00012","01","text","msg2",1,3,3,"grp1"))
+//            groupDatabase.groupMessageDao().insertMessage(GroupMessage("00014","01","text","msg4",1,5,3,"grp1"))
+//            groupDatabase.groupMessageDao().insertMessage(GroupMessage("00013","011","text","msg3",1,4,4,"grp1"))
         }
 
 
@@ -249,7 +270,7 @@ private val WRITE_EXTERNAL_STORAGE_REQUEST_CODE = 123
         super.onDestroy()
 //        okHttpClient.dispatcher.executorService.shutdown()
     }
-}
+
 
 @Composable
 fun BottomNavigationBar(navController: NavController) {
@@ -287,8 +308,7 @@ fun BottomNavigationBar(navController: NavController) {
 
                        },
                 modifier = Modifier.padding(4.dp),
-//                selectedContentColor = colorResource(id = R.color.white),
-//                unselectedContentColor = colorResource(id = R.color.unselected_bottom_item)
+
             )
         }
     }
@@ -296,14 +316,16 @@ fun BottomNavigationBar(navController: NavController) {
 }
 
 @Composable
-fun NavigationHost(navController: NavHostController, context: Context, peopleViewModel: PeopleViewModel) {
+fun NavigationHost(navController: NavHostController, context: Context ) {
 
     NavHost(navController, startDestination = BottomNavItem.Home.route) {
         composable(BottomNavItem.Home.route) {
 
             ChatList(peopleViewModel,context)
         }
-        composable(BottomNavItem.Group.route) { /* Search Screen UI */ }
+        composable(BottomNavItem.Group.route) {
+            GroupChatList(groupViewModel,context)
+        }
         composable(BottomNavItem.Profile.route) { /* Profile Screen UI */ }
     }
 }
@@ -333,4 +355,5 @@ private fun TopBarDesign(){
             StatusChatList()
         }
     }
+}
 }

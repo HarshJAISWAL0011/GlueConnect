@@ -3,10 +3,10 @@ package com.example.chatapplication.PeopleBook
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.SendersWithLastMessage
-import com.example.chatapplication.Repository.ConversationRepository
+ import com.example.chatapplication.Repository.ConversationRepository
 import com.example.chatapplication.db.ChatDatabase
 import com.example.chatapplication.db.Sender
+import com.example.util.SendersWithLastMessage
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.conflate

@@ -61,7 +61,7 @@
         <!-- android:name="com.google.firebase.messaging.default_notification_channel_id" -->
         <!-- android:value="@string/message_notification_channel_id" /> -->
         <service
-            android:name=".FirebaseServiceMessaging"
+            android:name=".firebase.CloudMessaging"
             android:exported="false">
             <intent-filter>
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />

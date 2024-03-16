@@ -1,4 +1,4 @@
-package com.example.chatapplication.HomePage
+package com.example.chatapplication.GroupPage
 
 import android.content.Context
 import android.content.Intent
@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -29,11 +28,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -50,22 +44,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.Constants.MESSAGE_TYPE_AUDIO
-import com.example.Constants.MESSAGE_TYPE_IMAGE
-import com.example.chatapplication.R
-import com.example.chatapplication.R.drawable.profile_placeholder
-import com.example.chatapplication.R.drawable.search
+import com.example.Constants
 import com.example.chatapplication.ChatPage.ChatActivity
 import com.example.chatapplication.PeopleBook.PeopleViewModel
-import com.example.chatapplication.db.Sender
+import com.example.chatapplication.R
+import com.example.util.GroupSendersWithMessage
 import com.example.util.SendersWithLastMessage
-import com.example.util.util.formatTime
-import com.google.ai.client.generativeai.type.content
+import com.example.util.util
+
 
 private val fontStyleHeading= TextStyle(
     fontFamily = FontFamily( Font(R.font.josefinsans)),
     fontWeight = FontWeight(800),
-            fontSize = 20.sp,
+    fontSize = 20.sp,
     color = Color.Black
 )
 
@@ -79,24 +70,25 @@ private val fontStyleContent= TextStyle(
 
 
 @Composable
-fun ChatList(peopleViewModel: PeopleViewModel, context:Context){
-    val peopleList = peopleViewModel.peopleListState.collectAsState()
+fun GroupChatList(viewModel: GroupListViewModel, context: Context){
+    val groupList = viewModel.groupListState.collectAsState()
 
-    val intent =Intent(context, ChatActivity::class.java)
-    println("storing peopleList size = ${peopleList.value.size}")
+    val intent = Intent(context, ChatActivity::class.java)
+    println("storing groupList size = ${groupList.value.size}")
 
     Surface(modifier = Modifier.background(colorResource(id = R.color.background))) {
         LazyColumn (modifier = Modifier.background(color = colorResource(id = R.color.background))){
-            items(peopleList.value){it->
+            items(groupList.value){it->
 
-                ChatItem(it) {
+                GroupChatItem(it) {
 
-                    intent.putExtra("id",it.email)
-                    intent.putExtra("isGroup",false)
-                    intent.putExtra("displayName",it.name)
+                    intent.putExtra("groupId",it.groupId)
+                    intent.putExtra("isGroup",true)
+                    intent.putExtra("displayName",it.groupName)
 
-                    if(it.newMessageCount > 0)
-                        peopleViewModel.resetNewMessageCount(it)
+
+                    if(it.newMessageCount!! > 0)
+                        viewModel.resetMessageCount(it)
 
                     context.startActivity(intent)
                 }
@@ -108,47 +100,47 @@ fun ChatList(peopleViewModel: PeopleViewModel, context:Context){
 
 
 @Composable
-fun ChatItem(sender: SendersWithLastMessage, onClick: ()->Unit){
+private fun GroupChatItem(group: GroupSendersWithMessage, onClick: ()->Unit){
 
-     val fontStyleHeadingNewMsg= TextStyle(
+    val fontStyleHeadingNewMsg= TextStyle(
         fontFamily = FontFamily( Font(R.font.josefinsans)),
         fontWeight = FontWeight.W900,
         fontSize = 20.sp,
         color = colorResource(id = R.color.primary)
     )
-    val time = formatTime(sender.receiveTime)
+    val time = util.formatTime(group.sentTime)
 
     Row (
         modifier = Modifier
             .clickable { onClick() }
             .padding(horizontal = 20.dp, vertical = 20.dp)
     ){
-        Image(painter = painterResource(id = profile_placeholder), contentDescription ="", contentScale = ContentScale.Fit, modifier = Modifier
+        Image(painter = painterResource(id = R.drawable.profile_placeholder), contentDescription ="", contentScale = ContentScale.Fit, modifier = Modifier
             .size(45.dp)
             .clip(shape = RoundedCornerShape(10.dp))
             .background(Color.Gray)
-             )
+        )
         Spacer(modifier = Modifier.width(15.dp))
         Column(verticalArrangement = Arrangement.Center
-            , modifier = Modifier
+               , modifier = Modifier
                 .weight(0.9f)
                 .background(color = colorResource(id = R.color.background)) )
         {
             Text(
-                text = sender.name,
-                style = if (sender.newMessageCount == 0) fontStyleHeading else fontStyleHeadingNewMsg,
+                text = group.groupName ?: "",
+                style = if (group.newMessageCount == 0) fontStyleHeading else fontStyleHeadingNewMsg,
             )
             Spacer(modifier = Modifier.height(11.dp))
 
 
-            sender.last_message?.let {
+            group.last_message?.let {
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(bottom = 4.dp)
                 ) {
 
-                    if (sender.messageType == MESSAGE_TYPE_IMAGE) {
+                    if (group.messageType == Constants.MESSAGE_TYPE_IMAGE) {
                         Icon(
                             painter = painterResource(id = R.drawable.picture_file),
                             contentDescription = "",
@@ -164,7 +156,7 @@ fun ChatItem(sender: SendersWithLastMessage, onClick: ()->Unit){
                         )
                     }
 
-                    else if (sender.messageType == MESSAGE_TYPE_AUDIO) {
+                    else if (group.messageType == Constants.MESSAGE_TYPE_AUDIO) {
 
                         Icon(
                             painter = painterResource(id = R.drawable.audio_file),
@@ -197,16 +189,17 @@ fun ChatItem(sender: SendersWithLastMessage, onClick: ()->Unit){
             .background(color = colorResource(id = R.color.background))) {
             Text(text = time, fontSize = 12.sp, color = Color.Gray, fontWeight = FontWeight.ExtraBold, modifier = Modifier.alpha(0.7f) )
             Spacer(modifier = Modifier.height(8.dp))
-            if (sender.newMessageCount > 0 ) {
-                val size = if (sender.newMessageCount >99) 21.dp else if(sender.newMessageCount > 9) 19.dp else 17.dp
-                val textSize = if (sender.newMessageCount >99) 11.sp else if(sender.newMessageCount > 9) 12.sp else 13.sp
-            Card(
-                shape = RoundedCornerShape(50.dp),
-                colors = CardDefaults.cardColors( containerColor = colorResource(
-                    id = R.color.primary
-                )),
-                modifier = Modifier.size(size),
-            ) {
+            if (group.newMessageCount > 0 ) {
+                val size = if (group.newMessageCount >99) 21.dp else if(group.newMessageCount > 9) 19.dp else 17.dp
+                val textSize = if (group.newMessageCount >99) 11.sp else if(group.newMessageCount > 9) 12.sp else 13.sp
+                Card(
+                    shape = RoundedCornerShape(50.dp),
+                    colors = CardDefaults.cardColors(containerColor = colorResource(
+                        id = R.color.primary
+                    )
+                    ),
+                    modifier = Modifier.size(size),
+                ) {
 
                     Row(
                         modifier = Modifier.fillMaxSize(1f),
@@ -214,56 +207,10 @@ fun ChatItem(sender: SendersWithLastMessage, onClick: ()->Unit){
                         horizontalArrangement = Arrangement.Center
                     ) {
 
-                        Text(text = sender.newMessageCount.toString(), fontSize = textSize)
+                        Text(text = group.newMessageCount.toString(), fontSize = textSize)
                     }
                 }
             }
         }
-    }
-}
-
-
-@Composable
-fun StatusChatList(){
-    Row (modifier = Modifier
-        .fillMaxWidth(1f)){
-        Box(modifier = Modifier
-            .size(42.dp)
-            .clip(RoundedCornerShape(11.dp))
-            .background(colorResource(id = R.color.primary_variant))
-            , contentAlignment = Alignment.Center) {
-            Image(
-                painter = painterResource(id = search), contentDescription = "", modifier = Modifier
-                    .size(40.dp)
-                    .padding(top = 4.dp),
-                contentScale = ContentScale.Fit,
-                colorFilter = ColorFilter.tint(color = Color.White)
-            )
-        }
-        LazyRow(modifier = Modifier
-            .padding(start = 20.dp)
-            .fillMaxWidth(1f)) {
-            items(10){
-
-                StatusItem()
-            }
-        }
-    }
-
-}
-@Composable
-fun StatusItem(){
-    Box(modifier = Modifier
-        .padding(horizontal = 10.dp)
-        .clip(RoundedCornerShape(11.dp))
-        .background(Color.Gray)
-        , contentAlignment = Alignment.Center) {
-        Image(
-            painter = painterResource(id = profile_placeholder),
-            contentDescription = "",
-            modifier = Modifier
-                .size(42.dp),
-            contentScale = ContentScale.FillBounds
-        )
     }
 }

@@ -12,14 +12,14 @@ import com.example.Constants.messageId
 import com.example.Constants.messageType
 import com.example.Constants.senderId
 import com.example.Constants.timestamp
-import com.example.DeleteMessageData
-import com.example.chatapplication.ChatPage.context
+ import com.example.chatapplication.ChatPage.context
 import com.example.chatapplication.WebSocket.webSocketListener
 import com.example.chatapplication.db.ChatDatabase
 import com.example.chatapplication.db.Message
 import com.example.chatapplication.db.SQLFuntions
 import com.example.chatapplication.db.Sender
 import com.example.retrofit.RetrofitBuilder
+import com.example.util.DeleteMessageData
 import com.example.util.util
 import com.example.util.util.URLdownloadFile
 import com.google.firebase.firestore.FirebaseFirestoreSettings

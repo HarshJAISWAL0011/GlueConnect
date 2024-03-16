@@ -7,12 +7,12 @@ import android.widget.Toast
 import com.example.Constants
 import com.example.Constants.MESSAGE_TYPE_AUDIO
 import com.example.Constants.MESSAGE_TYPE_IMAGE
-import com.example.NewConnection
-import com.example.chatapplication.Repository.ConversationRepository
+ import com.example.chatapplication.Repository.ConversationRepository
 import com.example.chatapplication.db.ChatDatabase
 import com.example.chatapplication.db.Message
 import com.example.chatapplication.db.SQLFuntions
 import com.example.chatapplication.db.Sender
+import com.example.util.NewConnection
 import com.example.util.util.URLdownloadFile
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -23,6 +23,7 @@ import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import org.json.JSONObject
+import java.sql.SQLException
 
 @SuppressLint("StaticFieldLeak")
 object webSocketListener : WebSocketListener() {
@@ -73,7 +74,7 @@ object webSocketListener : WebSocketListener() {
                 val senderObj = SQLFuntions.getSenderDetails(receivedFrom, context)
                 val messageObj = SQLFuntions.getMessageWithID(messageId, context)
 
-                if (senderObj == null)
+                if (senderObj == null) // new message first time
                     conversationRepository.insert(
                         Sender(
                             name = receivedFrom,
@@ -81,7 +82,7 @@ object webSocketListener : WebSocketListener() {
                             newMessageCount = 1
                         )
                     )
-                else if (messageObj == null) {
+                else if (messageObj == null) { // new message
                     ChatDatabase.getDatabase(context).senderDao()
                         .updateSender(senderObj.copy(newMessageCount = senderObj.newMessageCount + 1))
                 }
@@ -90,13 +91,18 @@ object webSocketListener : WebSocketListener() {
 
                 if (messageObj == null) {
                     if(messageType == MESSAGE_TYPE_IMAGE || messageType == MESSAGE_TYPE_AUDIO){
-                        val location = URLdownloadFile(context,receivedMessage)
-                        println("location of saving file = $location")
-                        ChatDatabase.getDatabase(context).messageDao().insertMessage(receivedMessage.copy(message = location.toString()))
+                        val file = URLdownloadFile(context,receivedMessage)
+                        println("location of saving file = ${file.toString()}")
+                        var location = ""
+                        if(file != null)
+                            location = file.toString();
+
+                        ChatDatabase.getDatabase(context).messageDao().insertMessage(receivedMessage.copy(message = location))
 
                     }else
                     ChatDatabase.getDatabase(context).messageDao().insertMessage(receivedMessage)
                 } else if (messageObj != null) {
+                    // update in message
                     ChatDatabase.getDatabase(context).messageDao().editMessage(receivedMessage)
                 }
 
@@ -105,6 +111,9 @@ object webSocketListener : WebSocketListener() {
         } catch (e: Throwable) {
             Log.d(TAG, "error: ${e.message}")
         }
+        catch (e: SQLException){
+        Log.d(TAG, "error: ${e.message}")
+    }
     }
 
     override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {

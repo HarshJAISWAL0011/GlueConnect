@@ -53,10 +53,10 @@ class ChatViewModel( var  senderId: String, private val repository: ChatReposito
 
 
 
-class ChatViewModelFactory(private val initialValue: String, private val repository: ChatRepository) : ViewModelProvider.Factory {
+class ChatViewModelFactory(private val initialValue: String?, private val repository: ChatRepository) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(ChatViewModel::class.java)) {
-            return ChatViewModel(initialValue, repository) as T
+            return ChatViewModel(initialValue?:"", repository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

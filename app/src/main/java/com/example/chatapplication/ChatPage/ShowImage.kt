@@ -18,8 +18,8 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ErrorResult
 import coil.request.ImageRequest
-import com.example.chatapplication.ChatPage.ui.theme.ChatApplicationTheme
 import com.example.chatapplication.R
+import com.example.chatapplication.ui.theme.ChatApplicationTheme
 import java.io.File
 
 class ShowImage : ComponentActivity() {

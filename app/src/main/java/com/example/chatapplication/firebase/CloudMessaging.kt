@@ -1,4 +1,4 @@
-package com.example.chatapplication
+package com.example.chatapplication.firebase
 
 import android.util.Log
 import com.example.Constants.FCM_title
@@ -8,7 +8,7 @@ import com.example.util.Notification
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 
-class FirebaseServiceMessaging  : FirebaseMessagingService() {
+class CloudMessaging  : FirebaseMessagingService() {
  val TAG = "FirebaseServiceMessaging";
 
     override fun onMessageReceived(remoteMessage: RemoteMessage) {

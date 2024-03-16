@@ -1,5 +1,6 @@
 package com.example.chatapplication.db
 
+import android.annotation.SuppressLint
 import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
@@ -20,6 +21,7 @@ abstract class ChatDatabase: RoomDatabase() {
 
         private var INSTANCE: ChatDatabase? = null;
 
+        @SuppressLint("SuspiciousIndentation")
         fun getDatabase(context: Context): ChatDatabase{
             synchronized(this){
                 if(INSTANCE == null)

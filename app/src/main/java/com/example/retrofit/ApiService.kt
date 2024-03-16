@@ -1,6 +1,6 @@
 package com.example.retrofit
 
-import com.example.DeleteMessageData
+import com.example.util.DeleteMessageData
 import org.json.JSONObject
 import retrofit2.Call
 import retrofit2.http.Body

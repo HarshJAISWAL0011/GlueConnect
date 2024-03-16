@@ -2,11 +2,11 @@ package com.example.chatapplication.Repository
 
 import android.util.Log
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.SendersWithLastMessage
 import com.example.chatapplication.WebSocket.webSocketListener
 import com.example.chatapplication.db.ChatDatabase
 import com.example.chatapplication.db.Message
 import com.example.chatapplication.db.Sender
+import com.example.util.SendersWithLastMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
