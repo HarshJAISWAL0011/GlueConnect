@@ -22,7 +22,7 @@ interface GroupMemberDao {
     suspend  fun removeMember(sender: GroupMember)
 
     @Query("Select * from group_member WHERE groupId =:groupId")
-    fun getMembers(groupId: String): GroupMember?
+    fun getMembers(groupId: String): List<GroupMember>
 
 
 

@@ -1,5 +1,6 @@
 package com.example.chatapplication.ChatPage
 
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.view.WindowManager
@@ -66,12 +67,19 @@ import androidx.room.withTransaction
 import com.example.Constants.MY_ID
 import com.example.chatapplication.GroupPage.GroupChatVMFactory
 import com.example.chatapplication.GroupPage.GroupChatViewModel
+import com.example.chatapplication.InfoPage.InfoActivity
 import com.example.chatapplication.ui.theme.ChatApplicationTheme
 import com.example.chatapplication.R
+import com.example.chatapplication.Repository.ChannelChatRepo
 import com.example.chatapplication.Repository.ChatRepository
 import com.example.chatapplication.Repository.GroupChatRepo
+import com.example.chatapplication.channel.ChannelChatVMFactory
+import com.example.chatapplication.channel.ChannelChatViewModel
+import com.example.chatapplication.channel.ChannelVMFactory
+import com.example.chatapplication.channel.ChannelViewModel
 import com.example.chatapplication.db.ChatDatabase
 import com.example.chatapplication.db.Message
+import com.example.chatapplication.db.channeldb.ChannelDatabase
 import com.example.chatapplication.db.groupdb.GroupDatabase
 import com.example.chatapplication.db.groupdb.GroupMessage
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
@@ -84,15 +92,16 @@ class ChatActivity : ComponentActivity() {
 
     lateinit var chatViewModel: ChatViewModel
     lateinit var groupViewModel: GroupChatViewModel
+    lateinit var channelViewModel: ChannelChatViewModel
     lateinit var database: ChatDatabase
     lateinit var groupDatabase: GroupDatabase
+    lateinit var channelDatabase: ChannelDatabase
     lateinit var selectedMessageList: MutableList<Message>
     lateinit var selectedMessageListSize: MutableState<Int>
     lateinit var showActions: MutableState<Boolean>
     lateinit var defaultText: MutableState<String>
-     var senderId: String? = null
-    var groupId: String? = null
-    var isGroup: Boolean = false;
+     var id: String? = null
+    var type: String? = "individual";
     var displayName: String? = "";
 
 
@@ -100,21 +109,27 @@ class ChatActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
 
-         senderId = intent.getStringExtra("id")
-        groupId = intent.getStringExtra("groupId")
-        isGroup = intent.getBooleanExtra("isGroup",false)
+         id = intent.getStringExtra("id")
+        type = intent.getStringExtra("type")
         displayName = intent.getStringExtra("displayName")
+
+//        println("all ids are $senderId $groupId $displayName $isGroup" )
 
         database = ChatDatabase.getDatabase(this)
         groupDatabase = GroupDatabase.getDatabase(this)
+        channelDatabase = ChannelDatabase.getDatabase(this)
 
         var  chatViewModelFactory =
-            ChatViewModelFactory(senderId, ChatRepository(senderId = senderId?:"", database))
+            ChatViewModelFactory(id, ChatRepository(senderId = id?:"", database))
         chatViewModel = ViewModelProvider(this, chatViewModelFactory).get(ChatViewModel::class.java)
 
         var  groupChatVMFactory =
-            GroupChatVMFactory(groupId, GroupChatRepo(groupId?:"" , groupDatabase))
+            GroupChatVMFactory(id, GroupChatRepo(id?:"" , groupDatabase, displayName?:""))
         groupViewModel = ViewModelProvider(this, groupChatVMFactory).get(GroupChatViewModel::class.java)
+
+        var  channelVMFactory =
+            ChannelChatVMFactory(id, ChannelChatRepo(id?:"" , channelDatabase, displayName?:""))
+        channelViewModel = ViewModelProvider(this, channelVMFactory).get(ChannelChatViewModel::class.java)
 
         setContent {
             ChatApplicationTheme {
@@ -186,7 +201,7 @@ class ChatActivity : ComponentActivity() {
                         }
                     ) {
                         Surface(modifier = Modifier.padding(it)) {
-                            if(isGroup && groupId != null){
+                            if(type == "group" && id != null){
                                 GroupChatContentList(this, groupViewModel, selectedMessageListSize.value,
                                                  {
                                                      // add in list on click
@@ -213,12 +228,13 @@ class ChatActivity : ComponentActivity() {
                                                          if (selectedMessageListSize.value > 0) {
 
                                                              var grpMsg = GroupMessage(it.messageId,it.senderId,it.messageType?:""
-                                                                                       ,it.message,it.isReceived,it.receiveTime,it.sentTime,groupId!!)
+                                                                                       ,it.message,it.isReceived,it.receiveTime,it.sentTime,id!!)
                                                              groupViewModel.updateMessage(grpMsg)
                                                          } else {
-
-                                                             groupViewModel.addMessage( GroupMessage(it.messageId,it.senderId,it.messageType?:""
-                                                                                                     ,it.message,it.isReceived,it.receiveTime,it.sentTime,groupId!!))
+                                                                // insert new message
+                                                             println("message id = ${it.toString()}")
+                                                             groupViewModel.addMessage( GroupMessage(it.messageId,"You",it.messageType?:""
+                                                                                                     ,it.message,it.isReceived,it.receiveTime,it.sentTime,id!!))
                                                          }
 
 
@@ -229,7 +245,7 @@ class ChatActivity : ComponentActivity() {
                                                      }
                                                  })
                             }
-                            else {
+                            else if(type == "individual") {
                                 ChatsContentList(this, chatViewModel, selectedMessageListSize.value,
                                                  {
                                                      // add in list on click
@@ -258,16 +274,8 @@ class ChatActivity : ComponentActivity() {
                                                                  .copy(message = it.message)
                                                              chatViewModel.updateMessage(msg)
                                                          } else {
-                                                             // insert new message
-//                                            var msg = Message(
-//                                                System.currentTimeMillis().toString()+MY_ID,
-//                                                chatViewModel.senderId,
-//                                                "image",
-//                                                it,
-//                                                1,
-//                                                System.currentTimeMillis(),
-//                                                System.currentTimeMillis()
-//                                            )
+
+                                                             println("message id = ${it.messageId} \n ${it.toString()}")
                                                              chatViewModel.addMessage(it)
                                                          }
 
@@ -278,6 +286,10 @@ class ChatActivity : ComponentActivity() {
                                                          defaultText.value = ""
                                                      }
                                                  })
+
+                            }
+                            else if(type == "channel"){
+                                ChannelContentList(this, channelViewModel, selectedMessageListSize.value,)
 
                             }
                         }
@@ -341,13 +353,13 @@ class ChatActivity : ComponentActivity() {
 
     fun deleteMessage(isForMe: Boolean) {
         CoroutineScope(Dispatchers.IO).launch {
-            if (isGroup && groupId != null) {
+            if (type == "group" && id != null) {
 
                 if (isForMe) {
                     selectedMessageList.forEach {
                         database.withTransaction {
                             var msg = GroupMessage(it.messageId,it.senderId,it.messageType?:"",it.message,
-                                                   it.isReceived,it.receiveTime,it.sentTime,groupId!!)
+                                                   it.isReceived,it.receiveTime,it.sentTime,id!!)
                             groupDatabase.groupMessageDao().deleteMessage(msg)
                         }
                     }
@@ -359,14 +371,14 @@ class ChatActivity : ComponentActivity() {
                 } else {
                     val lastMsg = selectedMessageList.get(0);
                     var msg = GroupMessage(lastMsg.messageId,lastMsg.senderId,lastMsg.messageType?:"","",
-                                           lastMsg.isReceived,lastMsg.receiveTime,lastMsg.sentTime,groupId!!)
+                                           lastMsg.isReceived,lastMsg.receiveTime,lastMsg.sentTime,id!!)
                     groupViewModel.updateMessage(msg)
                     selectedMessageList.clear()
                     selectedMessageListSize.value = 0;
                     showActions.value = false
                 }
 
-            } else {
+            } else  if (type == "individual" && id != null) {
                 if (isForMe) {
                     selectedMessageList.forEach {
                         database.withTransaction {
@@ -392,13 +404,13 @@ class ChatActivity : ComponentActivity() {
 
     override fun onDestroy() {
         GlobalScope.launch {
-            if (isGroup) {
-                    val groupObj = groupDatabase.groupDao().getGroup(groupId!!)
+            if (type == "group") {
+                    val groupObj = groupDatabase.groupDao().getGroupFromId(id!!)
                     if (groupObj != null) {
                         groupDatabase.groupDao().updateGroup(groupObj.copy(newMessageCount = 0))
                     }
-            } else {
-                val senderObj = database.senderDao().getSender(senderId!!)
+            } else if(type == "individual"){
+                val senderObj = database.senderDao().getSender(id!!)
                 if (senderObj != null) {
                     database.senderDao().updateSender(senderObj.copy(newMessageCount = 0))
                 }
@@ -409,6 +421,8 @@ class ChatActivity : ComponentActivity() {
 
     @Composable
     private fun TopBarDesign() {
+        val intent = Intent(this,InfoActivity::class.java)
+
         Column() {
             Row(
                 modifier = Modifier
@@ -435,7 +449,13 @@ class ChatActivity : ComponentActivity() {
                         .align(Alignment.CenterVertically)
                 )
                 Spacer(modifier = Modifier.width(15.dp))
-                Column(verticalArrangement = Arrangement.Center) {
+                Column(verticalArrangement = Arrangement.Center, modifier = Modifier.clickable {
+                    intent.putExtra("type", type)
+                    intent.putExtra("id", id)
+
+
+                    startActivity(intent)
+                }) {
                     displayName?.let {
                         Text(
                             text = it, fontSize = 17.sp,

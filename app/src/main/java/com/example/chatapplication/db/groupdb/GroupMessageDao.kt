@@ -27,11 +27,13 @@ interface GroupMessageDao {
     @Delete
     suspend  fun deleteMessage(msg: GroupMessage)
 
-    @Query("SELECT DISTINCT group_message.*, group_member.name AS senderName " +
-                   "        FROM group_message " +
-                   "           INNER JOIN group_member ON group_message.senderId = group_member.senderId " +
-                   "           WHERE group_message.groupId = :groupId" +
-                   "          ORDER BY group_message.receiveTime DESC LIMIT :pageSize OFFSET :offset")
+    @Query("SELECT gm.*," +
+            "    (SELECT gm1.name FROM group_member gm1 WHERE gm1.senderId = gm.senderId) AS senderName " +
+            "FROM " +
+            "    group_message gm " +
+            "WHERE  " +
+            "    gm.groupId = :groupId " +
+            "ORDER BY gm.receiveTime DESC LIMIT :pageSize OFFSET :offset")
     fun getMessage(groupId: String,offset: Int, pageSize:String): Flow<List<GroupMessageData>>
 
 

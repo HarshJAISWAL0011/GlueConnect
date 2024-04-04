@@ -19,19 +19,7 @@ data class SendersWithLastMessage( var id: Int=0,
                                    val messageType: String? = "text",
                                    var newMessageCount: Int,
                                    var last_message: String? = "",
-                                   var receiveTime: Long?=0){
-
-    constructor(
-        id: Int,
-        name: String,
-        email: String,
-        messageType: String?,
-        last_message: Int,
-        receiveTime: Long?,
-
-    ) : this(id, "", email, "text", 0, "", )
-
-}
+                                   var receiveTime: Long?=0)
 
 data class GroupSendersWithMessage(
     var id: Int = 0,
@@ -42,17 +30,28 @@ data class GroupSendersWithMessage(
     var newMessageCount: Int,
     var last_message: String? = "",
     var sentTime: Long? = 0
-) {
-    constructor(
-        id: Int,
-        groupId: String,
-        groupName: String?,
-        senderName: String?,
-        newMessageCount: Int,
-        last_message: String?,
-        sentTime: Long?
-    ) : this(id, groupId, "no-name", "", "text", 0, "", 0)
-}
+)
+
+data class CreateChannelData(
+
+    var name: String,
+    var profileUrl: String,
+    var description: String = "",
+    var creatorId: String,
+    var followers: Int = 0,
+    var channelType: String,
+    var time: Long
+)
+
+data class ChannelsWithMessage(
+    var id: Int = 0,
+    var channelId: String,
+    var name: String = "",
+    var messageType: String? = "text",
+    var newMessageCount: Int,
+    var last_message: String? = "",
+    var receiveTime: Long? = 0
+)
 
 class SendMessage(sendToId:String, senderId: String, message: String,id:String, messageType:String){
     val jsonObject = JSONObject()
@@ -66,6 +65,22 @@ class SendMessage(sendToId:String, senderId: String, message: String,id:String, 
         jsonObject.put(Constants.messageType, messageType )
     }
 }
+
+class SendGroupMessage( senderId: String, message: String,id:String, messageType:String, groupId: String, groupName: String){
+    val jsonObject = JSONObject()
+    init {
+        jsonObject.put(Constants.type, Constants.new_group_message)
+        jsonObject.put(Constants.senderId, senderId)
+        jsonObject.put(Constants.timestamp, System.currentTimeMillis())
+        jsonObject.put(Constants.message, message)
+        jsonObject.put(Constants.messageId, id )
+        jsonObject.put(Constants.messageType, messageType )
+        jsonObject.put(Constants.GroupId, groupId )
+        jsonObject.put(Constants.GroupName, groupName )
+    }
+}
+
+data class CreateGroupData(val groupName: String, val groupMembers: List<String>, val createdBy: String)
 
 data class GroupMessageData(
     val messageId: String = "0",
@@ -83,3 +98,4 @@ class Message(var receivedFrom:String,var message: String,var timestamp: Long,va
 data class DeleteMessageData(
     val userId: String,
 )
+data class GroupId(val id: String)

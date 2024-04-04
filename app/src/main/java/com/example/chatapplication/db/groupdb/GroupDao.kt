@@ -18,11 +18,12 @@ interface GroupDao {
 
     @Update
     suspend fun updateGroup(group: Group)
+
     @Delete
     suspend  fun deleteGroup(group: Group)
 
     @Query("Select * from groups WHERE groupId =:groupId")
-    fun getGroup(groupId: String): Group?
+    fun getGroupFromId(groupId: String): Group?
 
     @Query("SELECT groups.*, latest_message.message AS last_message, latest_message.sentTime, latest_message.messageType " +
                    "FROM groups " +

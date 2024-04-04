@@ -66,6 +66,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -101,11 +102,15 @@ import com.airbnb.lottie.compose.LottieClipSpec
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
+import com.example.Constants.EXT_DIR_IMAGE_LOCATION
 import com.example.Constants.MESSAGE_TYPE_AUDIO
 import com.example.Constants.MESSAGE_TYPE_IMAGE
 import com.example.chatapplication.GroupPage.GroupChatViewModel
 import com.example.chatapplication.R
+import com.example.chatapplication.channel.ChannelChatViewModel
 import com.example.chatapplication.db.Message
+import com.example.chatapplication.db.channeldb.ChannelDatabase
+import com.example.chatapplication.db.channeldb.ChannelMessage
 import com.example.util.util
 import com.example.util.util.getMinSecond
 import com.example.util.util.saveImageToExternalStorage
@@ -128,7 +133,65 @@ var userId: String = "968"
 var audioLocation: File? = null
 lateinit var context: Context
 private var recorder: MediaRecorder? = null
+private var sender_group_id: String? = null
 
+
+@Composable
+fun ChannelContentList(
+    context2: Context, viewModel: ChannelChatViewModel, messageListSize:Int){
+
+    context = context2
+
+    context = context2
+    sender_group_id = viewModel.id
+    val chatList = viewModel.chatListState.collectAsState()
+    val listState = rememberLazyListState()
+    var islongClickEnable by remember {
+        mutableStateOf(false)
+    }
+    if(messageListSize == 0) {
+        islongClickEnable = false
+        println("size of list islongclick enabled = $islongClickEnable")
+    }
+
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = colorResource(id = R.color.background),
+
+        ) {
+        Column(modifier = Modifier.padding(start = 8.dp, end = 8.dp,top=8.dp, bottom = 5.dp)) {
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                state = listState,
+                reverseLayout = true
+            ) {
+                itemsIndexed(chatList.value) {idx,it->
+                    var bubbleSelected by remember {
+                        mutableStateOf(false)
+                    }
+
+                    if(islongClickEnable == false) bubbleSelected =false
+                    ChatBubble(Message(it.messageId,it.channelId,it.messageType,it.message,1,it.receiveTime),"", bubbleSelected, context,
+                        {
+                        // onclick
+
+                    }){
+                        // onLongClick
+                      }
+
+                    if(idx == chatList.value.size -5) { // pagination
+                        viewModel.loadOldMessage()
+                    }
+                }
+            }
+
+
+//            sendMessageBox(defaultText, onSend = onMessageSend)
+        }
+    }
+
+}
 
 @Composable
 fun GroupChatContentList(  context2: Context, viewModel: GroupChatViewModel, messageListSize:Int, addSelected:(data: Message)->Unit,
@@ -136,6 +199,7 @@ fun GroupChatContentList(  context2: Context, viewModel: GroupChatViewModel, mes
                            onMessageSend:(message:Message)->Unit){
 
     context = context2
+    sender_group_id = viewModel.groupId
 
     val chatList = viewModel.chatListState.collectAsState()
     val listState = rememberLazyListState()
@@ -165,7 +229,7 @@ fun GroupChatContentList(  context2: Context, viewModel: GroupChatViewModel, mes
                     }
 
                     if(!islongClickEnable) bubbleSelected =false
-                    var msg = Message(it.messageId,it.senderId?:"",it.messageType,it.message,it.isReceived,it.receiveTime,it.sentTime)
+                    var msg = Message(it.messageId,sender_group_id?:"",it.messageType,it.message,it.isReceived,it.receiveTime,it.sentTime)
                     ChatBubble(msg,it.senderName?:"", bubbleSelected, context,{
                         // onclick
                         if(islongClickEnable) {
@@ -205,6 +269,7 @@ fun ChatsContentList(
     onMessageSend:(message:Message)->Unit ){
 
     context = context2
+    sender_group_id = chatViewModel.senderId
     val chatList = chatViewModel.chatListState.collectAsState()
     val listState = rememberLazyListState()
     var islongClickEnable by remember {
@@ -282,11 +347,6 @@ fun sendMessageBox(defaultText:String,onSend: (msg: Message)->Unit){
         messageText = defaultText
     }
 
-
-    println("default text $defaultText and message = $messageText")
-//    messageText = defaultText
-//    messageText =
-
     Box(modifier = Modifier
         .clip(RoundedCornerShape(18.dp))
         .background(color = containerColor)
@@ -336,8 +396,9 @@ fun sendMessageBox(defaultText:String,onSend: (msg: Message)->Unit){
                                 .rotate(0f)
                                 .padding(5.dp)
                                 .align(Alignment.CenterVertically)
-                                .clickable { bottomSheetVisible.value = true
-                                         },
+                                .clickable {
+                                    bottomSheetVisible.value = true
+                                },
                             tint = colorResource(id = R.color.primary_variant)
                         )
                         Spacer(modifier = Modifier.width(10.dp))
@@ -352,7 +413,7 @@ fun sendMessageBox(defaultText:String,onSend: (msg: Message)->Unit){
                                         val time = System.currentTimeMillis()
                                         var msg = Message(
                                             userId + time,
-                                            userId,
+                                            sender_group_id ?: "",
                                             "text",
                                             messageText,
                                             0,
@@ -395,8 +456,9 @@ fun sendMessageBox(defaultText:String,onSend: (msg: Message)->Unit){
                             } else {
                                 stopRecording()
                                 val time = System.currentTimeMillis()
-                                val senderId = userId
-                                val msg = Message("$senderId$time",senderId,MESSAGE_TYPE_AUDIO,audioLocation.toString()
+                                userId
+                                val msg = Message("$userId$time",
+                                    sender_group_id?:"",MESSAGE_TYPE_AUDIO,audioLocation.toString()
                                 ,0,time,time)
                                 onSend(msg)
                             }
@@ -682,7 +744,8 @@ fun ChatBubble(messageObj: Message,senderName: String,isBubbleSelected: Boolean,
                                 isPlaying = isPlaying,
                                 modifier = Modifier
                                     .background(
-                                        color = audioBoxColor)
+                                        color = audioBoxColor
+                                    )
                                     .size(44.dp),
                                 composition = composition,
                                 reverseOnRepeat = true,
@@ -777,7 +840,7 @@ fun showBottomSheet(onSend: (msg: Message) -> Unit, context: Context) {
 
                     val time = System.currentTimeMillis()
                     var job = CoroutineScope(Dispatchers.IO).launch {
-                        saveImageToExternalStorage(context, uri, fileName)
+                        saveImageToExternalStorage(EXT_DIR_IMAGE_LOCATION,context, uri, fileName)
                     }
                     job.join()
 

@@ -10,4 +10,5 @@
     <color name="textfeild_bg_color">#E1E4F3</color>
     <color name="unselected_bottom_item">#BCC1D6</color>
     <color name="selected_chat_color">#86869EF7</color>
+    <color name="dark_red">#D40000</color>
 </resources>

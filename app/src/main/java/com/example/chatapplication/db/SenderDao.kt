@@ -25,6 +25,9 @@ import kotlinx.coroutines.flow.Flow
         @Query("Select * from sender WHERE EMAIL =:email")
         fun getSender(email: String): Sender?
 
+    @Query("Select * from sender WHERE EMAIL =:email")
+    fun getSenderListener(email: String): Flow<Sender>
+
         @Query("Select * from sender")
         fun getAllSenders(): Flow<List<Sender>>
 

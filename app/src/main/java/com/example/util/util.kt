@@ -7,11 +7,9 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
-import com.example.Constants
 import com.example.Constants.MESSAGE_TYPE_AUDIO
 import com.example.Constants.MESSAGE_TYPE_IMAGE
-import com.example.chatapplication.WebSocket.WebSocketClient
-import com.example.chatapplication.db.Message
+import com.google.android.gms.tasks.Task
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.ktx.storage
 import kotlinx.coroutines.Dispatchers
@@ -57,10 +55,10 @@ object util {
     }
 
 
-    suspend fun saveImageToExternalStorage(context: Context, uri: Uri,fileName: String) {
+    suspend fun saveImageToExternalStorage(path:String, context: Context, uri: Uri,fileName: String) {
 
             try {
-                val imgDir = File(Environment.getExternalStorageDirectory(),"/Chat/Images")
+                val imgDir = File(Environment.getExternalStorageDirectory(),path)
                 imgDir.mkdirs()
                 val imageFile = File(imgDir, fileName)
 
@@ -107,37 +105,28 @@ object util {
         }
     }
 
-     fun uploadFile(message: SendMessage, location: String){
+     fun uploadFile(location: String, uri: String): Task<Uri> {
         println("Uploading file")
         val storage = Firebase.storage
         val storageRef = storage.reference
-        var file = Uri.fromFile(File(message.jsonObject.getString(Constants.message)))
+        var file = Uri.fromFile(File(uri))
         val riversRef = storageRef.child("${location}/${file.lastPathSegment}")
         val uploadTask = riversRef.putFile(file)
 
-        val urlTask = uploadTask.continueWithTask { task ->
-            if (!task.isSuccessful) {
-                task.exception?.let {
-                    println("failure uploading file ${task.exception?.message}")
-                }
-            }
-            riversRef.downloadUrl
-        }.addOnCompleteListener { task ->
-            if (task.isSuccessful) {
-                val downloadUri = task.result
-                println("content download url =$downloadUri")
-                message.jsonObject.put(Constants.message,downloadUri)
-                WebSocketClient.webSocket?.send(message.jsonObject.toString())
-            } else {
-                    println("failure uploading file ${task.exception?.message}")
-            }
-        }
+         return uploadTask.continueWithTask { task ->
+             if (!task.isSuccessful) {
+                 task.exception?.let {
+                     println("failure uploading file ${task.exception?.message}")
+                     throw it
+                 }
+             }
+             riversRef.downloadUrl
+         }
     }
 
-    suspend fun URLdownloadFile( context: Context, msg: Message): File?{
+    suspend fun URLdownloadFile(link: String, messageType: String, senderId: String): File?{
         try {
-            val url = URL(msg.message)
-            val messageType = msg.messageType
+            val url = URL(link)
             val contentType = when(messageType){
                  MESSAGE_TYPE_IMAGE ->"/Images"
                 "audio" ->"/Audios"
@@ -150,7 +139,7 @@ object util {
                 else -> "jpeg"
             }
             val time = System.currentTimeMillis()
-            val fileName = "${msg.senderId}_$time.$extension"
+            val fileName = "${senderId}_$time.$extension"
             val directory = Environment.getExternalStorageDirectory()
             val file = File("$directory/Chat/Received",contentType )
             file.mkdirs()

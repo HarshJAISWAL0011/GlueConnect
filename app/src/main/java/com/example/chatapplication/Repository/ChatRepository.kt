@@ -1,5 +1,6 @@
 package com.example.chatapplication.Repository
 
+import com.example.Constants
 import com.example.Constants.FOLDER_AUDIOS
 import com.example.Constants.FOLDER_IMAGES
 import com.example.Constants.MESSAGE_TYPE_AUDIO
@@ -27,10 +28,17 @@ class ChatRepository (var senderId: String ,var database: ChatDatabase){
             message.messageId,
             message.messageType?:""
         ) // should send message id not pK
-        if (message.messageType == MESSAGE_TYPE_IMAGE) {
-            uploadFile(messageFormat, FOLDER_IMAGES)
-        } else if (message.messageType == MESSAGE_TYPE_AUDIO) {
-            uploadFile(messageFormat, FOLDER_AUDIOS)
+        if (message.messageType == MESSAGE_TYPE_IMAGE || message.messageType == MESSAGE_TYPE_AUDIO) {
+
+            val folder = if(message.messageType == MESSAGE_TYPE_IMAGE) FOLDER_IMAGES
+            else if(message.messageType == MESSAGE_TYPE_AUDIO) FOLDER_AUDIOS
+            else Constants.FOLDER_OTHERS
+
+            uploadFile(folder, message.message).addOnCompleteListener{task->
+                val downloadUri = task.result
+                messageFormat.jsonObject.put(Constants.message,downloadUri) // update download uri
+                WebSocketClient.webSocket?.send(messageFormat.jsonObject.toString())
+            }
         }else{
             WebSocketClient.webSocket?.send(messageFormat.jsonObject.toString())
         }

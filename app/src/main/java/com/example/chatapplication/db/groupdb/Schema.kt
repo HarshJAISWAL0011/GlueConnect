@@ -37,7 +37,7 @@ data class GroupMember(
                onDelete = ForeignKey.CASCADE)])
 data class GroupMessage(
     @PrimaryKey
-    val messageId: String = "0",
+    val messageId: String ,
     val senderId: String = "",
 //    var senderName: String? = "",
     val messageType: String = "text",
@@ -45,5 +45,5 @@ data class GroupMessage(
     val isReceived: Int = 1,
     val receiveTime: Long = 0,
     val sentTime: Long = 0,
-    val groupId: String = ""
+    val groupId: String
 )

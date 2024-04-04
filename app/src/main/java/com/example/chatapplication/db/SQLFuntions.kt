@@ -3,6 +3,9 @@ package com.example.chatapplication.db
 import android.content.Context
 import android.util.Log
 import com.example.chatapplication.db.ChatDatabase.Companion.getDatabase
+import com.example.chatapplication.db.groupdb.Group
+import com.example.chatapplication.db.groupdb.GroupDatabase
+import com.example.chatapplication.db.groupdb.GroupMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -28,6 +31,20 @@ object SQLFuntions {
             return@async database.messageDao().getMessageFromID(messageID)
         }.await()
         return message
+    }
+
+    suspend fun getGroupMessageWithID(messageID: String , context: Context): GroupMessage?{
+        var message = CoroutineScope(Dispatchers.IO).async {
+            val database = GroupDatabase.getDatabase(context)
+            return@async database.groupMessageDao().getMessageFromID(messageID)
+        }.await()
+        return message
+    }
+
+    suspend fun getGroupFromId(id: String , context: Context):Group?{
+        val database = GroupDatabase.getDatabase(context)
+        var sender = database.groupDao().getGroupFromId(id);
+        return sender
     }
 
 }

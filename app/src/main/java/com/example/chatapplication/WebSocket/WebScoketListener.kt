@@ -3,15 +3,21 @@ package com.example.chatapplication.WebSocket
 import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Log
-import android.widget.Toast
 import com.example.Constants
+import com.example.Constants.GroupId
+import com.example.Constants.GroupName
 import com.example.Constants.MESSAGE_TYPE_AUDIO
 import com.example.Constants.MESSAGE_TYPE_IMAGE
- import com.example.chatapplication.Repository.ConversationRepository
+import com.example.Constants.MESSAGE_TYPE_TEXT
+import com.example.Constants.new_group_message
+import com.example.chatapplication.Repository.ConversationRepository
 import com.example.chatapplication.db.ChatDatabase
 import com.example.chatapplication.db.Message
 import com.example.chatapplication.db.SQLFuntions
 import com.example.chatapplication.db.Sender
+import com.example.chatapplication.db.groupdb.Group
+import com.example.chatapplication.db.groupdb.GroupDatabase
+import com.example.chatapplication.db.groupdb.GroupMessage
 import com.example.util.NewConnection
 import com.example.util.util.URLdownloadFile
 import kotlinx.coroutines.CoroutineScope
@@ -58,16 +64,63 @@ object webSocketListener : WebSocketListener() {
             val timestamp = jsonObject.getString(Constants.timestamp)
             val messageId = jsonObject.getString(Constants.messageId)
             val messageType = jsonObject.getString(Constants.messageType)
-            val receivedMessage = Message(
-                messageId,
-                receivedFrom,
-                messageType,
-                message,
-                1,
-                System.currentTimeMillis(),
-                timestamp.toLong()
-            )
-            Log.d(TAG, "onMessage: senderOBj ${receivedMessage}")
+            val sentTime = jsonObject.getLong(Constants.timestamp);
+            val type = jsonObject.getString(Constants.type)
+
+
+            if(type == new_group_message)
+            {
+                var groupId = jsonObject.getString(GroupId)
+                var groupName = jsonObject.getString(GroupName)
+                val groupDatabase = GroupDatabase.getDatabase(context)
+                CoroutineScope(Dispatchers.IO).launch {
+
+                    val groupObj = SQLFuntions.getGroupFromId(groupId, context)
+                    val messageObj = SQLFuntions.getGroupMessageWithID(messageId, context)
+
+                    if(groupObj == null ){
+                        groupDatabase.groupDao().insertNewGroup(Group(0,groupName,groupId,0))
+                    }else
+                        groupDatabase.groupDao().updateGroup(groupObj.copy(newMessageCount = groupObj.newMessageCount + 1))
+
+                    if(messageObj == null){
+
+                    if(messageType == MESSAGE_TYPE_TEXT)
+                    groupDatabase.groupMessageDao()
+                        .insertMessage(GroupMessage(messageId,receivedFrom,messageType, message ,1, System.currentTimeMillis(), sentTime ,groupId))
+
+                    else if(messageType == MESSAGE_TYPE_IMAGE || messageType == MESSAGE_TYPE_AUDIO){
+                        val file = URLdownloadFile(message, messageType, receivedFrom)
+                        println("location of saving file = ${file.toString()}")
+                        var location = ""
+                        if (file != null)
+                            location = file.toString();
+                        groupDatabase.groupMessageDao().insertMessage(
+                            GroupMessage(
+                                messageId,receivedFrom,messageType, location ,1, System.currentTimeMillis(), sentTime ,groupId
+                        ))
+                    }
+                }
+                   else {
+                    groupDatabase.groupMessageDao().editMessage(messageObj.copy(message = message))
+                    }
+
+            }
+            }
+            else{
+                val receivedMessage = Message(
+                    messageId,
+                    receivedFrom,
+                    messageType,
+                    message,
+                    1,
+                    System.currentTimeMillis(),
+                    timestamp.toLong()
+                )
+                Log.d(TAG, "onMessage: senderOBj ${receivedMessage}")
+
+
+
 
             CoroutineScope(Dispatchers.IO).launch {
 
@@ -90,24 +143,29 @@ object webSocketListener : WebSocketListener() {
                 println("test messageOBj= $messageObj")
 
                 if (messageObj == null) {
-                    if(messageType == MESSAGE_TYPE_IMAGE || messageType == MESSAGE_TYPE_AUDIO){
-                        val file = URLdownloadFile(context,receivedMessage)
+                    if (messageType == MESSAGE_TYPE_IMAGE || messageType == MESSAGE_TYPE_AUDIO) {
+                        val file = URLdownloadFile(
+                            receivedMessage.message,
+                            receivedMessage.messageType?:"Image",
+                            receivedMessage.senderId
+                        )
                         println("location of saving file = ${file.toString()}")
                         var location = ""
-                        if(file != null)
+                        if (file != null)
                             location = file.toString();
 
-                        ChatDatabase.getDatabase(context).messageDao().insertMessage(receivedMessage.copy(message = location))
+                        ChatDatabase.getDatabase(context).messageDao()
+                            .insertMessage(receivedMessage.copy(message = location))
 
-                    }else
-                    ChatDatabase.getDatabase(context).messageDao().insertMessage(receivedMessage)
+                    } else
+                        ChatDatabase.getDatabase(context).messageDao()
+                            .insertMessage(receivedMessage)
                 } else if (messageObj != null) {
                     // update in message
                     ChatDatabase.getDatabase(context).messageDao().editMessage(receivedMessage)
                 }
-
             }
-
+                }
         } catch (e: Throwable) {
             Log.d(TAG, "error: ${e.message}")
         }
