@@ -111,9 +111,11 @@ import com.example.chatapplication.channel.ChannelChatViewModel
 import com.example.chatapplication.db.Message
 import com.example.chatapplication.db.channeldb.ChannelDatabase
 import com.example.chatapplication.db.channeldb.ChannelMessage
+import com.example.chatapplication.firebase.FirestoreDb.getChannelChats
 import com.example.util.util
 import com.example.util.util.getMinSecond
 import com.example.util.util.saveImageToExternalStorage
+import com.google.firebase.firestore.DocumentSnapshot
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
@@ -137,8 +139,78 @@ private var sender_group_id: String? = null
 
 
 @Composable
+fun DbMessageList(
+    context2: Context,  ){
+
+    context = context2
+
+    var chatList  = remember {
+        mutableStateListOf<ChannelMessage>()
+    }
+    var lastMessage by remember {
+        mutableStateOf<DocumentSnapshot?>(null)
+    }
+
+    LaunchedEffect(Unit) {
+        CoroutineScope(Dispatchers.IO).launch {
+            val snapShotList = getChannelChats("968", null)
+           var result = snapShotList.mapNotNull { document ->
+                 document.toObject(ChannelMessage::class.java)
+            }
+            if(snapShotList.size > 0)
+            lastMessage = snapShotList.get(snapShotList.size -1)
+            chatList.addAll(result)
+        }
+    }
+    val listState = rememberLazyListState()
+
+
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = colorResource(id = R.color.background),
+
+        ) {
+        Column(modifier = Modifier.padding(start = 8.dp, end = 8.dp,top=8.dp, bottom = 5.dp)) {
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                state = listState,
+                reverseLayout = true
+            ) {
+                itemsIndexed(chatList) {idx,it->
+
+                    ChatBubble(Message(it.messageId,it.channelId,it.messageType,it.message,1,it.receiveTime),"", false, context,
+                        {
+                            // onclick
+
+                        }){
+                        // onLongClick
+                    }
+
+                    LaunchedEffect(idx == chatList.size -5) {
+                         // pagination
+                        CoroutineScope(Dispatchers.IO).launch {
+                           val snapShotList = getChannelChats("968", lastMessage)
+                            var result = snapShotList.mapNotNull { document ->
+                                document.toObject(ChannelMessage::class.java)
+                            }
+                            lastMessage = snapShotList.get(snapShotList.size -1)
+                            chatList.addAll(result)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+}
+
+
+@Composable
 fun ChannelContentList(
-    context2: Context, viewModel: ChannelChatViewModel, messageListSize:Int){
+    context2: Context, viewModel: ChannelChatViewModel, messageListSize:Int,addSelected:(data: Message)->Unit,
+    removeSelected:(data:Message)->Unit, onLongClick:(data:Message)->Unit, defaultText: String,
+    onMessageSend:(message:Message)->Unit){
 
     context = context2
 
@@ -151,7 +223,6 @@ fun ChannelContentList(
     }
     if(messageListSize == 0) {
         islongClickEnable = false
-        println("size of list islongclick enabled = $islongClickEnable")
     }
 
     Surface(
@@ -167,27 +238,37 @@ fun ChannelContentList(
                 reverseLayout = true
             ) {
                 itemsIndexed(chatList.value) {idx,it->
+
                     var bubbleSelected by remember {
                         mutableStateOf(false)
                     }
-
-                    if(islongClickEnable == false) bubbleSelected =false
-                    ChatBubble(Message(it.messageId,it.channelId,it.messageType,it.message,1,it.receiveTime),"", bubbleSelected, context,
+                    val msg = Message(it.messageId,it.channelId,it.messageType,it.message,1,it.receiveTime)
+                    ChatBubble(msg,"", bubbleSelected, context,
                         {
-                        // onclick
-
-                    }){
+                            // onclick
+                            if(islongClickEnable) {
+                                if (bubbleSelected) {
+                                    removeSelected(msg)
+                                } else {
+                                    addSelected(msg)
+                                }
+                                bubbleSelected = !bubbleSelected
+                            }else{
+                                bubbleSelected = false
+                            }
+                        }){
                         // onLongClick
-                      }
+                        islongClickEnable = true
+                        onLongClick(msg)
+                        bubbleSelected = true
+                    }
 
                     if(idx == chatList.value.size -5) { // pagination
                         viewModel.loadOldMessage()
                     }
                 }
             }
-
-
-//            sendMessageBox(defaultText, onSend = onMessageSend)
+            sendMessageBox(defaultText, onSend = onMessageSend)
         }
     }
 
@@ -246,17 +327,15 @@ fun GroupChatContentList(  context2: Context, viewModel: GroupChatViewModel, mes
                         // onLongClick
                         islongClickEnable = true
                         onLongClick(msg)
-                        bubbleSelected = true}
+                        bubbleSelected = true
+                    }
 
                     if(idx == chatList.value.size -5) { // pagination
                         viewModel.loadOldMessage()
                     }
                 }
             }
-            var dt by remember {
-                mutableStateOf("")
-            }
-            dt = defaultText
+
             sendMessageBox(defaultText, onSend = onMessageSend)
         }
     }

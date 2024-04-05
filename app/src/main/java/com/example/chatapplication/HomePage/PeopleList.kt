@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,28 +23,26 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.IconButton
-import androidx.compose.material.ModalBottomSheetValue
 import androidx.compose.material.OutlinedTextField
-import androidx.compose.material.TextField
-import androidx.compose.material.TextFieldColors
 import androidx.compose.material.TextFieldDefaults
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.KeyboardArrowLeft
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -55,6 +54,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
@@ -66,6 +66,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -82,10 +83,14 @@ import com.example.chatapplication.MainActivity
 import com.example.chatapplication.PeopleBook.PeopleViewModel
 import com.example.chatapplication.channel.ChannelViewModel
 import com.example.chatapplication.db.Sender
+import com.example.chatapplication.firebase.FirestoreDb
 import com.example.retrofit.RetrofitBuilder
+import com.example.util.ChannelData
 import com.example.util.SendersWithLastMessage
 import com.example.util.util.formatTime
 import com.google.ai.client.generativeai.type.content
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import retrofit2.Call
 import retrofit2.Callback
@@ -109,33 +114,74 @@ private val fontStyleContent= TextStyle(
 @Composable
 fun ChannelList(viewModel: ChannelViewModel, context: Context){
     val channelList = viewModel.channelListState.collectAsState()
+    var showSearchBox by remember { mutableStateOf(false) }
+
+
 
     val intent = Intent(context, ChatActivity::class.java)
     println("storing channelList size = ${channelList.value.size}")
 
     Surface(modifier = Modifier.background(colorResource(id = R.color.background))) {
-        LazyColumn (modifier = Modifier.background(color = colorResource(id = R.color.background))){
-            items(channelList.value){it->
-
-                var details = SendersWithLastMessage(it.id,it.name,it.channelId,it.messageType,it.newMessageCount,it.last_message,it.receiveTime)
-                ChatItem(details, "") {
-
-                    intent.putExtra("id",it.channelId)
-                    intent.putExtra("type","channel")
-                    intent.putExtra("displayName",it.name)
+        if (showSearchBox)
+            SearchBox( { showSearchBox = !showSearchBox },context)
+        else {
+            Column(modifier = Modifier
+                .fillMaxSize()
+                .background(color = colorResource(id = R.color.background))) {
 
 
-                    if(it.newMessageCount!! > 0)
-                        viewModel.resetMessageCount(it)
+            Row(horizontalArrangement = Arrangement.End,
+                modifier = Modifier.fillMaxWidth()) {
+                Text(text ="Public Channels" , style = fontStyleHeading, fontSize = 17.sp,
+                    modifier = Modifier
+                        .weight(1f)
+                        .align(Alignment.CenterVertically),
+                    textAlign = TextAlign.Center,
+                    color = Color.Gray
+                )
+                IconButton(onClick = { showSearchBox = !showSearchBox
+               }) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.search_thick),
+                        contentDescription = "",
+                        modifier = Modifier
+                            .padding(end = 15.dp)
+                            .size(25.dp),
+                        tint = colorResource(id = R.color.primary).copy(0.7f)
+                    )
+                }
+            }
 
-                    context.startActivity(intent)
+            LazyColumn(modifier = Modifier.background(color = colorResource(id = R.color.background))) {
+                items(channelList.value) { it ->
+
+                    var details = SendersWithLastMessage(
+                        it.id,
+                        it.name,
+                        it.channelId,
+                        it.messageType,
+                        it.newMessageCount,
+                        it.last_message,
+                        it.receiveTime
+                    )
+                    ChatItem(details, "") {
+
+                        intent.putExtra("id", it.channelId)
+                        intent.putExtra("type", "channel")
+                        intent.putExtra("displayName", it.name)
+
+
+                        if (it.newMessageCount!! > 0)
+                            viewModel.resetMessageCount(it)
+
+                        context.startActivity(intent)
+                    }
                 }
             }
         }
     }
-
 }
-
+}
 
 @Composable
 fun GroupChatList(viewModel: GroupListViewModel, context: Context){
@@ -479,7 +525,7 @@ fun CreateGroupBottomSheet(senderList: List<Sender>,showSheet:(show: Boolean )->
 
 
 @Composable
-private fun GroupSelectionItem(name: String, onClick: () -> Unit){
+private fun GroupSelectionItem(name: String, onClick: () -> Unit){ // indiv. user items shown while creating group
     var isCheck by remember {
         mutableStateOf(false)
     }
@@ -524,6 +570,154 @@ private fun GroupSelectionItem(name: String, onClick: () -> Unit){
                 ) )
             }
         }
+
+
+
+    }
+}
+
+ @Composable
+fun SearchBox( backPressed: ()->Unit,context:Context ){
+    var text by remember { mutableStateOf(TextFieldValue("")) }
+    var searchChannelList = remember { mutableStateListOf<ChannelData>() }
+
+    LaunchedEffect(Unit) {
+        CoroutineScope(Dispatchers.IO).launch {
+
+            var list = FirestoreDb.getChannelList("96", "")
+            searchChannelList.clear()
+            searchChannelList.addAll(list)
+
+        }
+    }
+
+
+    Column(modifier = Modifier
+        .background(colorResource(id = R.color.background))
+        .fillMaxSize()) {
+
+
+    Row (verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.background(colorResource(id = R.color.background)) ){
+
+   IconButton(onClick = { backPressed() }) {
+       Icon(Icons.Outlined.KeyboardArrowLeft, contentDescription ="", tint = colorResource(id = R.color.primary) )
+   }
+
+        Box(
+            modifier = Modifier
+                .padding(horizontal = 20.dp, vertical = 10.dp)
+                .height(40.dp)
+                .fillMaxWidth()
+                .border(
+                    width = 1.dp,
+                    color = colorResource(id = R.color.primary),
+                    shape = RoundedCornerShape(20.dp) // Rounded corners
+                ),
+            contentAlignment = Alignment.CenterStart // Center align content horizontally
+        ) {
+            BasicTextField(
+                value = text,
+                onValueChange = { text = it
+                    CoroutineScope(Dispatchers.IO).launch {
+
+                        var list = FirestoreDb.getChannelList("96", it.text.toString())
+                                 searchChannelList.clear()
+                        println("inside ${list.size}")
+                                 searchChannelList.addAll(list)
+                        println("size="+searchChannelList.size)
+
+                    }
+                                },
+                textStyle = TextStyle(fontSize = 16.sp),
+                singleLine = true,
+                decorationBox = { innerTextField ->
+                    Box(contentAlignment = Alignment.CenterStart,
+                    modifier = Modifier.fillMaxHeight()) {
+                        // Placeholder text
+                        if (text.text.isEmpty()) {
+                            Text(
+                                text = "  Search...",
+                                style = TextStyle(color = Color.Gray)
+                            )
+                        }
+                            innerTextField()
+
+                    }
+                    },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp) // Add padding inside the text field
+            )
+        }
+    }
+        LazyColumn(modifier = Modifier.background(color = colorResource(id = R.color.background))) {
+
+                items(searchChannelList) {
+
+                    ChannelItem(name = it.name , followers =it.followers.toString() ) {
+                        val intent = Intent(context, ChatActivity::class.java)
+                        intent.putExtra("id",it.channelId)
+                        intent.putExtra("type","search_channel")
+                        intent.putExtra("displayName",it.name)
+                        context.startActivity(intent)
+                }
+            }
+        }
+
+    }
+
+}
+
+@Composable
+fun ChannelItem(name: String, followers: String, onClick: () -> Unit){ // indiv. user items shown while creating group
+    var isCheck by remember {
+        mutableStateOf(false)
+    }
+    Row    (
+        modifier = Modifier
+            .clickable {
+                isCheck = !isCheck
+                onClick()
+            }
+            .padding(horizontal = 20.dp, vertical = 15.dp)
+        ,
+        verticalAlignment = Alignment.CenterVertically
+    ){
+        Image(painter = painterResource(id = profile_placeholder), contentDescription ="", contentScale = ContentScale.Fit, modifier = Modifier
+            .size(45.dp)
+            .clip(shape = RoundedCornerShape(10.dp))
+            .background(Color.Gray)
+        )
+        Spacer(modifier = Modifier.width(20.dp))
+
+        Column ( modifier =  Modifier.weight(0.8f)){
+            Text(
+                text = name,
+                style =   fontStyleHeading,
+                fontSize = 17.sp,
+            )
+            Spacer(modifier = Modifier.height(5.dp))
+
+            Text(
+                text = " $followers followers",
+                style =   fontStyleHeading,
+                fontSize = 11.sp,
+                color = Color.Gray,
+
+            )
+        }
+
+        Spacer(modifier = Modifier.width(11.dp))
+
+
+            IconButton(onClick = {
+                onClick()},
+            ) {
+                Icon(Icons.Outlined.KeyboardArrowLeft, contentDescription = "", tint = colorResource(id = R.color.primary_variant),
+                    modifier = Modifier.rotate(180.0f))
+            }
+
 
 
 

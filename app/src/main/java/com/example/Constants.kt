@@ -15,6 +15,7 @@ object Constants {
    const val new_connection ="New_Connection"
    const val new_message ="New_Message"
    const val new_group_message ="New_Group_Message"
+      const val new_channel_message ="new_channel_message"
    const val message ="message"
    const val type = "type"
    const val ACTION_DELETE = "action_delete"
@@ -49,5 +50,7 @@ object Constants {
    const val FIRESTORE_REGISTRATION_TOKEN ="token"
    const val EXT_DIR_IMAGE_LOCATION ="/Chat/Images"
    const val EXT_DIR_PROFILE_LOCATION ="/Chat/profile"
+   const val ChannelId ="channel_id"
+   const val ChannelName ="channel_name"
 }
 

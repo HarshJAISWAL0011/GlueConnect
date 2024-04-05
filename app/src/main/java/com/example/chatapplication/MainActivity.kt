@@ -450,6 +450,7 @@ class MainActivity : ComponentActivity() {
                 GroupChatList(groupViewModel, context)
             }
             composable(BottomNavItem.Channel.route) {
+
                 ChannelList(channelViewModel,context )
             }
         }

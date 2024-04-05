@@ -43,6 +43,18 @@ data class CreateChannelData(
     var time: Long
 )
 
+data class ChannelData(
+    var name: String,
+    var profileUrl: String,
+    var creatorId: String,
+    var followers: Int = 0,
+    var channelType: String,
+    var channelId: String,
+    var time: Long
+){
+    constructor():this("","","",0,"","",0)
+}
+
 data class ChannelsWithMessage(
     var id: Int = 0,
     var channelId: String,
@@ -65,6 +77,19 @@ class SendMessage(sendToId:String, senderId: String, message: String,id:String, 
         jsonObject.put(Constants.messageType, messageType )
     }
 }
+
+class SendChannelMessage( channelId: String, message: String,messageId:String, messageType:String){
+    val jsonObject = JSONObject()
+    init {
+        jsonObject.put(Constants.type, Constants.new_channel_message)
+         jsonObject.put(Constants.timestamp, System.currentTimeMillis())
+        jsonObject.put(Constants.message, message)
+        jsonObject.put(Constants.messageId, messageId )
+        jsonObject.put(Constants.messageType, messageType )
+        jsonObject.put(Constants.ChannelId, channelId )
+    }
+}
+
 
 class SendGroupMessage( senderId: String, message: String,id:String, messageType:String, groupId: String, groupName: String){
     val jsonObject = JSONObject()

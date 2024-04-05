@@ -80,8 +80,10 @@ import com.example.chatapplication.channel.ChannelViewModel
 import com.example.chatapplication.db.ChatDatabase
 import com.example.chatapplication.db.Message
 import com.example.chatapplication.db.channeldb.ChannelDatabase
+import com.example.chatapplication.db.channeldb.ChannelMessage
 import com.example.chatapplication.db.groupdb.GroupDatabase
 import com.example.chatapplication.db.groupdb.GroupMessage
+import com.example.util.SendChannelMessage
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -289,8 +291,59 @@ class ChatActivity : ComponentActivity() {
 
                             }
                             else if(type == "channel"){
-                                ChannelContentList(this, channelViewModel, selectedMessageListSize.value,)
+                                ChannelContentList(this, channelViewModel, selectedMessageListSize.value,
+                                    {
+                                        // add in list on click
+                                        selectedMessageList.add(it)
+                                        selectedMessageListSize.value++
+                                    },
+                                    {
+                                        // remove from list on click
+                                        selectedMessageList.remove(it)
+                                        if (selectedMessageList.size == 0)
+                                            showActions.value = false
+                                        selectedMessageListSize.value--
 
+                                    },
+                                    {
+                                        // Long click
+                                        selectedMessageList.add(it)
+                                        showActions.value = true
+                                        selectedMessageListSize.value++
+                                    }, defaultText.value,
+                                    {
+                                        // update message
+                                        GlobalScope.launch {
+                                            if (selectedMessageListSize.value > 0) {
+                                                var msgId = selectedMessageList.get(0).messageId
+                                                var message = SendChannelMessage(id?:"",it.message,msgId,
+                                                    it.messageType?:"")
+                                                channelDatabase.channelMsgDao().editMessage(
+                                                    ChannelMessage(msgId,id?:"",it.messageType,it.message,System.currentTimeMillis())
+                                                )
+
+                                            } else {
+                                                // add new Message
+                                                println("message id = ${it.messageId} \n ${it.toString()}")
+                                                val messageId = "${System.currentTimeMillis()}$id"
+                                                var message = SendChannelMessage(id?:"",it.message,messageId,
+                                                    it.messageType?:"")
+                                                channelDatabase.channelMsgDao().insertMessage(
+                                                    ChannelMessage(messageId,id?:"",it.messageType,it.message,System.currentTimeMillis())
+                                                )
+//                                                chatViewModel.addMessage(it)
+                                            }
+
+
+                                            selectedMessageList.clear()
+                                            selectedMessageListSize.value = 0;
+                                            showActions.value = false
+                                            defaultText.value = ""
+                                        }
+                                    })
+                            }
+                            else if(type == "search_channel"){
+                                DbMessageList(this)
                             }
                         }
                     }

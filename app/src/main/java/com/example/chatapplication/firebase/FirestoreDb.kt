@@ -21,19 +21,30 @@ import com.example.chatapplication.db.ChatDatabase
 import com.example.chatapplication.db.Message
 import com.example.chatapplication.db.SQLFuntions
 import com.example.chatapplication.db.Sender
+import com.example.chatapplication.db.channeldb.ChannelMessage
 import com.example.retrofit.RetrofitBuilder
+import com.example.util.ChannelData
 import com.example.util.CreateChannelData
 import com.example.util.DeleteMessageData
 import com.example.util.util.URLdownloadFile
 import com.google.android.gms.tasks.Task
 import com.google.android.gms.tasks.TaskCompletionSource
 import com.google.android.gms.tasks.Tasks
+import com.google.firebase.firestore.DocumentSnapshot
+import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreSettings
+import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
+ import kotlinx.coroutines.tasks.await
 import retrofit2.Callback
 import retrofit2.Call
 import retrofit2.Response
@@ -196,4 +207,50 @@ object  FirestoreDb {
     }
 
 
+    suspend fun getChannelList(id: String, searchText: String): List<ChannelData> {
+        val db = FirebaseFirestore.getInstance()
+        val collectionRef = db.collection(path_channels)
+            .whereGreaterThanOrEqualTo("name", searchText)
+            .whereLessThan("name", searchText + "\uf8ff")
+
+        val dataList = mutableListOf<ChannelData>()
+
+        try {
+            val querySnapshot = collectionRef.get().await()
+
+            for (document in querySnapshot.documents) {
+                val channelData = document.toObject(ChannelData::class.java)
+                channelData?.channelId = document.id
+                if (channelData != null) {
+                    dataList.add(channelData)
+                }
+            }
+            println(querySnapshot.size())
+        } catch (e: Exception) {
+            println("Error fetching channel list: ${e.message}")
+        }
+
+        return dataList
+    }
+
+    suspend fun getChannelChats(id:String,lastItem: DocumentSnapshot?):List< DocumentSnapshot>{
+        val db = FirebaseFirestore.getInstance()
+        var ref =if(lastItem != null)
+            db.collection(path_groups).document(id)
+            .collection("messages")
+            .orderBy("time", Query.Direction.DESCENDING)
+            .limit(25)
+        else
+            db.collection(path_groups).document(id)
+                .collection("messages")
+                .orderBy("time", Query.Direction.DESCENDING)
+                .startAfter(lastItem)
+                .limit(25)
+
+        val snapshot = ref.get().await()
+
+         val results = snapshot.documents
+
+        return results
+    }
 }
