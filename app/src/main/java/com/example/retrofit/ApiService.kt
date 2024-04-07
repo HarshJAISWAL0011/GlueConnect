@@ -1,5 +1,6 @@
 package com.example.retrofit
 
+import com.example.util.ChannelMessageData
 import com.example.util.CreateGroupData
 import com.example.util.DeleteMessageData
 import com.example.util.GroupId
@@ -14,4 +15,7 @@ interface ApiService {
 
     @POST("/create_group")
     fun create_group(@Body data: CreateGroupData): Call<GroupId>
+
+    @POST("/channel_message")
+    fun channel_message(@Body data: ChannelMessageData): Call<Void>
 }

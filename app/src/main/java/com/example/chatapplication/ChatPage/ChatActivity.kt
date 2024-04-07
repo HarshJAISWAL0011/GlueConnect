@@ -83,7 +83,8 @@ import com.example.chatapplication.db.channeldb.ChannelDatabase
 import com.example.chatapplication.db.channeldb.ChannelMessage
 import com.example.chatapplication.db.groupdb.GroupDatabase
 import com.example.chatapplication.db.groupdb.GroupMessage
-import com.example.util.SendChannelMessage
+import com.example.util.ChannelMessageData
+import com.example.util.util
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -315,23 +316,24 @@ class ChatActivity : ComponentActivity() {
                                         // update message
                                         GlobalScope.launch {
                                             if (selectedMessageListSize.value > 0) {
-                                                var msgId = selectedMessageList.get(0).messageId
-                                                var message = SendChannelMessage(id?:"",it.message,msgId,
+                                                val msgId = selectedMessageList.get(0).messageId
+                                                val message = ChannelMessageData(id?:"",it.message,msgId,
                                                     it.messageType?:"")
                                                 channelDatabase.channelMsgDao().editMessage(
                                                     ChannelMessage(msgId,id?:"",it.messageType,it.message,System.currentTimeMillis())
                                                 )
+                                                util.sendChannelMessage(message)
 
                                             } else {
                                                 // add new Message
                                                 println("message id = ${it.messageId} \n ${it.toString()}")
                                                 val messageId = "${System.currentTimeMillis()}$id"
-                                                var message = SendChannelMessage(id?:"",it.message,messageId,
+                                                val message = ChannelMessageData(id?:"",it.message,messageId,
                                                     it.messageType?:"")
                                                 channelDatabase.channelMsgDao().insertMessage(
                                                     ChannelMessage(messageId,id?:"",it.messageType,it.message,System.currentTimeMillis())
                                                 )
-//                                                chatViewModel.addMessage(it)
+                                                util.sendChannelMessage(message)
                                             }
 
 

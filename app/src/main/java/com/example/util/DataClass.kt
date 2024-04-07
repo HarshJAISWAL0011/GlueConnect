@@ -78,20 +78,21 @@ class SendMessage(sendToId:String, senderId: String, message: String,id:String, 
     }
 }
 
-class SendChannelMessage( channelId: String, message: String,messageId:String, messageType:String){
-    val jsonObject = JSONObject()
+class ChannelMessageData(var channelId: String,var message: String,var messageId:String,var messageType:String){
+//    val jsonObject = JSONObject()
+     var  timestamp: Long = System.currentTimeMillis()
     init {
-        jsonObject.put(Constants.type, Constants.new_channel_message)
-         jsonObject.put(Constants.timestamp, System.currentTimeMillis())
-        jsonObject.put(Constants.message, message)
-        jsonObject.put(Constants.messageId, messageId )
-        jsonObject.put(Constants.messageType, messageType )
-        jsonObject.put(Constants.ChannelId, channelId )
+//        jsonObject.put(Constants.type, Constants.new_channel_message)
+//         jsonObject.put(Constants.timestamp, System.currentTimeMillis())
+//        jsonObject.put(Constants.message, message)
+//        jsonObject.put(Constants.messageId, messageId )
+//        jsonObject.put(Constants.messageType, messageType )
+//        jsonObject.put(Constants.ChannelId, channelId )
     }
 }
 
 
-class SendGroupMessage( senderId: String, message: String,id:String, messageType:String, groupId: String, groupName: String){
+class SendGroupMessage(var senderId: String,var message: String,var id:String,var messageType:String,var groupId: String,var groupName: String){
     val jsonObject = JSONObject()
     init {
         jsonObject.put(Constants.type, Constants.new_group_message)

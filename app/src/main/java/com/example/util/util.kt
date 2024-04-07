@@ -7,12 +7,19 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
+import androidx.room.withTransaction
 import com.example.Constants.MESSAGE_TYPE_AUDIO
 import com.example.Constants.MESSAGE_TYPE_IMAGE
+import com.example.chatapplication.db.channeldb.ChannelMessage
+import com.example.chatapplication.db.groupdb.Group
+import com.example.chatapplication.db.groupdb.GroupMember
+import com.example.retrofit.RetrofitBuilder
 import com.google.android.gms.tasks.Task
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.ktx.storage
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
@@ -172,6 +179,24 @@ object util {
 
         }
         return null
+    }
+
+    fun sendChannelMessage(data: ChannelMessageData){
+        val apiService = RetrofitBuilder.create()
+        apiService.channel_message(data).enqueue((object : retrofit2.Callback<Void> {
+            override fun onResponse(call: retrofit2.Call<Void>, response: retrofit2.Response<Void>) {
+                if (response.isSuccessful) {
+
+                } else {
+                    // Handle error response
+                    println("Failed Group create message result " + response.message())
+                }
+            }
+
+            override fun onFailure(call: retrofit2.Call<Void>, t: Throwable) {
+                println("Failed Group create message result " + t.message + " "+ call)
+            }
+        }))
     }
 
 
