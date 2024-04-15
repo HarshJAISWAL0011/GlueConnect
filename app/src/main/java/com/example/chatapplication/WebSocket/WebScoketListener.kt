@@ -9,6 +9,7 @@ import com.example.Constants.GroupName
 import com.example.Constants.MESSAGE_TYPE_AUDIO
 import com.example.Constants.MESSAGE_TYPE_IMAGE
 import com.example.Constants.MESSAGE_TYPE_TEXT
+import com.example.Constants.MY_ID
 import com.example.Constants.new_group_message
 import com.example.chatapplication.Repository.ConversationRepository
 import com.example.chatapplication.db.ChatDatabase
@@ -18,7 +19,7 @@ import com.example.chatapplication.db.Sender
 import com.example.chatapplication.db.groupdb.Group
 import com.example.chatapplication.db.groupdb.GroupDatabase
 import com.example.chatapplication.db.groupdb.GroupMessage
-import com.example.util.NewConnection
+ import com.example.util.NewConnection
 import com.example.util.util.URLdownloadFile
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -34,7 +35,7 @@ import java.sql.SQLException
 @SuppressLint("StaticFieldLeak")
 object webSocketListener : WebSocketListener() {
 
-    private val TAG = "Test"
+    private val TAG = "Websocket"
     private lateinit var context: Context;
     private lateinit var conversationRepository: ConversationRepository;
 
@@ -45,7 +46,9 @@ object webSocketListener : WebSocketListener() {
 
     override fun onOpen(webSocket: WebSocket, response: Response) {
         super.onOpen(webSocket, response)
-        val report = NewConnection("968")
+        val id = MY_ID
+//        val id  = "2005"
+        val report = NewConnection(id)
         webSocket.send(report.jsonObject.toString())
         Log.d(TAG, "onOpen:")
     }
@@ -54,9 +57,13 @@ object webSocketListener : WebSocketListener() {
     override fun onMessage(webSocket: WebSocket, text: String) {
         super.onMessage(webSocket, text)
         Log.d(TAG, "onMessage: $text")
-        if(text.contains("Server Recived")) return
+        if(text.contains("Server Received")) return
         try {
             val jsonObject = JSONObject(text)
+
+            val type = jsonObject.getString(Constants.type)
+
+
 
 
             val receivedFrom = jsonObject.getString(Constants.senderId)
@@ -65,7 +72,6 @@ object webSocketListener : WebSocketListener() {
             val messageId = jsonObject.getString(Constants.messageId)
             val messageType = jsonObject.getString(Constants.messageType)
             val sentTime = jsonObject.getLong(Constants.timestamp);
-            val type = jsonObject.getString(Constants.type)
 
 
             if(type == new_group_message)

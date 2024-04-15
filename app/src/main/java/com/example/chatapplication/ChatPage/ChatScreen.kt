@@ -133,7 +133,7 @@ import java.util.Locale
 lateinit var bottomSheetVisible:MutableState<Boolean>
 var userId: String = "968"
 var audioLocation: File? = null
-lateinit var context: Context
+private lateinit var context: Context
 private var recorder: MediaRecorder? = null
 private var sender_group_id: String? = null
 

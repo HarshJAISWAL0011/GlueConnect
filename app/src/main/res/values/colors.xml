@@ -11,4 +11,5 @@
     <color name="unselected_bottom_item">#BCC1D6</color>
     <color name="selected_chat_color">#86869EF7</color>
     <color name="dark_red">#D40000</color>
+    <color name="faded_black">#57000000</color>
 </resources>

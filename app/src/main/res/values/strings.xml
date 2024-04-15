@@ -5,4 +5,7 @@
     <string name="title_activity_show_image">ShowImage</string>
     <string name="title_activity_info">InfoActivity</string>
     <string name="title_activity_create_channel">CreateChannelActivity</string>
+    <string name="pref_speakerphone_key">speakerphone_preference</string>
+    <string name="pref_speakerphone_default">auto</string>
+    <string name="title_activity_rtcactivity">RTCActivity</string>
 </resources>

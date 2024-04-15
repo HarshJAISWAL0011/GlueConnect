@@ -55,12 +55,10 @@ object  FirestoreDb {
     @SuppressLint("SuspiciousIndentation")
     suspend fun getNewMessageFirestore(id:String, database: ChatDatabase, context: Context){
         val messageList = mutableListOf<Message>()
-        val settings = FirebaseFirestoreSettings.Builder()
-            .setPersistenceEnabled(false)
-            .build()
+
 
         val db = Firebase.firestore
-        db.firestoreSettings = settings
+
         val msgRef = db.collection(FIRESTORE_USERS)
             .document(id)
             .collection(FIRESTORE_MESSAGES)

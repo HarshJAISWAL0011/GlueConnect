@@ -8,8 +8,10 @@ import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
 import androidx.room.withTransaction
+import com.example.Constants
 import com.example.Constants.MESSAGE_TYPE_AUDIO
 import com.example.Constants.MESSAGE_TYPE_IMAGE
+import com.example.Constants.type
 import com.example.chatapplication.db.channeldb.ChannelMessage
 import com.example.chatapplication.db.groupdb.Group
 import com.example.chatapplication.db.groupdb.GroupMember
@@ -198,6 +200,9 @@ object util {
             }
         }))
     }
+
+
+
 
 
 }

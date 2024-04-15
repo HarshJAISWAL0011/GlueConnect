@@ -1,12 +1,20 @@
 package com.example.chatapplication
 
 import android.Manifest
+import android.annotation.SuppressLint
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.ContentValues.TAG
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
+import android.widget.RemoteViews
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.EnterTransition
@@ -65,6 +73,8 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.NavController
@@ -76,7 +86,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.room.withTransaction
 import com.example.Constants
-import com.example.chatapplication.ChatPage.context
+import com.example.Constants.MY_ID
 import com.example.chatapplication.GroupPage.GroupListViewModel
 import com.example.chatapplication.GroupPage.GroupVMFactory
 import com.example.chatapplication.HomePage.BottomNavItem
@@ -109,14 +119,19 @@ import com.example.chatapplication.db.groupdb.GroupDatabase
 import com.example.chatapplication.db.groupdb.GroupMember
 import com.example.chatapplication.db.groupdb.GroupMessage
 import com.example.chatapplication.firebase.FirestoreDb.getNewMessageFirestore
+import com.example.chatapplication.webRTC.IncomingCallListener
+import com.example.chatapplication.webRTC.RTCActivity
+import com.example.chatapplication.webRTC.RTCActivity.Companion.callerId
+
 import com.example.retrofit.RetrofitBuilder
 import com.example.util.CreateGroupData
-import com.example.util.GroupId
+ import com.example.util.GroupId
 import com.example.util.Notification
 import com.example.util.SendersWithLastMessage
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.google.android.gms.tasks.OnCompleteListener
 import com.google.firebase.messaging.FirebaseMessaging
+import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -125,7 +140,7 @@ import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 
-class MainActivity : ComponentActivity() {
+class MainActivity : ComponentActivity(), IncomingCallListener {
 
     private val WRITE_EXTERNAL_STORAGE_REQUEST_CODE = 123
     lateinit var database: ChatDatabase
@@ -137,7 +152,9 @@ class MainActivity : ComponentActivity() {
     lateinit var channelViewModel: ChannelViewModel
     lateinit var groupReop: GroupRepo
     lateinit var channelRepository: ChannelRepo
+    val REQUEST_MEDIA_PROJECTION = 34;
 
+    @SuppressLint("MissingPermission")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -187,13 +204,23 @@ class MainActivity : ComponentActivity() {
                         ) {
 
                             val viewModelFactory = PeopleViewModelFactory(database, convRepo)
-                            peopleViewModel = ViewModelProvider(this, viewModelFactory).get(PeopleViewModel::class.java)
+                            peopleViewModel = ViewModelProvider(
+                                this,
+                                viewModelFactory
+                            ).get(PeopleViewModel::class.java)
 
                             val groupVMFactory = GroupVMFactory(groupDatabase, groupReop)
-                            groupViewModel = ViewModelProvider(this, groupVMFactory).get(GroupListViewModel::class.java)
+                            groupViewModel = ViewModelProvider(
+                                this,
+                                groupVMFactory
+                            ).get(GroupListViewModel::class.java)
 
-                            val channelVMFactory = ChannelVMFactory(channelDatabase, channelRepository)
-                            channelViewModel = ViewModelProvider(this, channelVMFactory).get(ChannelViewModel::class.java)
+                            val channelVMFactory =
+                                ChannelVMFactory(channelDatabase, channelRepository)
+                            channelViewModel = ViewModelProvider(
+                                this,
+                                channelVMFactory
+                            ).get(ChannelViewModel::class.java)
 
                             NavigationHost(navController, this)
                         }
@@ -204,12 +231,52 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+//        MY_ID = android.os.Build.MODEL;
         database = ChatDatabase.getDatabase(this)
         groupDatabase = GroupDatabase.getDatabase(this)
         channelDatabase = ChannelDatabase.getDatabase(this)
         convRepo = ConversationRepository(database)
         groupReop = GroupRepo(groupDatabase)
         channelRepository = ChannelRepo(channelDatabase)
+
+
+        val answerIntent = Intent(this, RTCActivity::class.java).apply {
+            action = "ACTION_ANSWER_CALL"
+            putExtra("callerId", callerId)
+        }
+
+        val answerPendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            answerIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        val declineIntent = Intent(this, MainActivity::class.java).apply {
+            action = "ACTION_DECLINE_CALL"
+        }
+
+        val declinePendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            declineIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        val notification = NotificationCompat.Builder(this, "incoming_call_channel_id")
+            .setContentTitle("Incoming Call")
+            .setContentText("John Doe is calling")
+            .setSmallIcon(R.drawable.ic_call)
+            .addAction(R.drawable.ic_call, "Answer", answerPendingIntent)
+            .addAction(R.drawable.ic_baseline_call_end_24, "Decline", declinePendingIntent)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true) // Close notification when clicked
+            .build()
+
+//        val notificationManager = NotificationManagerCompat.from(this)
+//        notificationManager.notify(1, notification)
+
+
 
 
 
@@ -245,6 +312,18 @@ class MainActivity : ComponentActivity() {
 
         }
 
+        val permission = Manifest.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION
+        if (ContextCompat.checkSelfPermission(
+                this,
+                permission
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            // Permission is granted, proceed with starting the service
+
+        } else {
+            // Permission is not granted, request it from the user
+            ActivityCompat.requestPermissions(this, arrayOf(permission), REQUEST_MEDIA_PROJECTION)
+        }
 
         if (ActivityCompat.checkSelfPermission(
                 this,
@@ -256,16 +335,98 @@ class MainActivity : ComponentActivity() {
 
         CoroutineScope(Dispatchers.IO).launch {
             getNewMessageFirestore("968", database, baseContext)
+            resetNotificationSharedPref()
+            requestStoragePermission()
+            createNotificationChannel(this@MainActivity)
         }
 
-        resetNotificationSharedPref()
-        requestStoragePermission()
+//showCustomNotification(this)
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun showCustomNotification(context: Context) {
+        // Create RemoteViews for custom notification layout
+        val contentView = RemoteViews(context.packageName, R.layout.notification_layout)
+
+        // Create the notification builder
+        val builder = NotificationCompat.Builder(context, "incoming_call_channel_id")
+            .setSmallIcon(R.drawable.ic_call)
+            .setCustomContentView(contentView)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(false)
+
+        // Create the notification manager
+        val notificationManager = NotificationManagerCompat.from(context)
+
+        // Show the notification
+        notificationManager.notify(1, builder.build())
+
+        // Setup click listeners for buttons in the custom notification
+        contentView.setOnClickPendingIntent(
+            R.id.btnAnswer,
+            createAnswerPendingIntent(context)
+        )
+
+        contentView.setOnClickPendingIntent(
+            R.id.btnDecline,
+            createDeclinePendingIntent(context)
+        )
+
+        // Schedule automatic dismissal after 30 seconds
+        Handler(Looper.getMainLooper()).postDelayed({
+            notificationManager.cancel(1) // Remove the notification after 30 seconds
+        }, 30000) // 30 seconds delay
+    }
+
+    private fun createAnswerPendingIntent(context: Context): PendingIntent {
+        val answerIntent = Intent(context, RTCActivity::class.java).apply {
+            action = "ACTION_ANSWER_CALL"
+            // Add extras if needed
+        }
+        return PendingIntent.getActivity(
+            context,
+            0,
+            answerIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT
+        )
+    }
+
+    private fun createDeclinePendingIntent(context: Context): PendingIntent {
+        val declineIntent = Intent(context, MainActivity::class.java).apply {
+            action = "ACTION_DECLINE_CALL"
+            // Add extras if needed
+        }
+        return PendingIntent.getActivity(
+            context,
+            0,
+            declineIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT
+        )
+    }
+
+    private fun createNotificationChannel(context: Context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                "incoming_call_channel_id",
+                "Incoming Call Channel",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Channel for incoming call notifications"
+                // Configure channel settings if needed (e.g., vibration, lights)
+            }
+
+            val notificationManager = context.getSystemService(NotificationManager::class.java)
+            notificationManager.createNotificationChannel(channel)
+        }
     }
 
     private fun resetNotificationSharedPref() {
         saveIntSharedPref(this, Constants.total_message_pending, 0)
         saveListSharedPref(this, Constants.notif_users_pending, emptyList())
     }
+
+
+
 
     fun requestStoragePermission() {
         if (ContextCompat.checkSelfPermission(
@@ -323,17 +484,17 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun connectFCM() {
-        FirebaseMessaging.getInstance().token.addOnCompleteListener(OnCompleteListener { task ->
-            if (!task.isSuccessful) {
-                Log.w(TAG, "Fetching FCM registration token failed", task.exception)
-                return@OnCompleteListener
-            }
-            val token = task.result
-
-            // Log and toast
-            val msg = token
-            println("firebase token =$msg")
-        })
+//        FirebaseMessaging.getInstance().token.addOnCompleteListener(OnCompleteListener { task ->
+//            if (!task.isSuccessful) {
+//                Log.w(TAG, "Fetching FCM registration token failed", task.exception)
+//                return@OnCompleteListener
+//            }
+//            val token = task.result
+//
+//            // Log and toast
+//            val msg = token
+//            println("firebase token =$msg")
+//        })
     }
 
     override fun onDestroy() {
@@ -451,7 +612,7 @@ class MainActivity : ComponentActivity() {
             }
             composable(BottomNavItem.Channel.route) {
 
-                ChannelList(channelViewModel,context )
+                ChannelList(channelViewModel, context)
             }
         }
     }
@@ -477,110 +638,173 @@ class MainActivity : ComponentActivity() {
             showStatus = true
 
         if (showUserListBottomSheet)
-             CreateGroupBottomSheet(senderList = senderList,
-                 {showUserListBottomSheet= it},
-             {
-                if(selectedSenders.contains(it)){
-                    selectedSenders.remove(it)
-                }else
-                    selectedSenders.add(it)
+            CreateGroupBottomSheet(senderList = senderList,
+                { showUserListBottomSheet = it },
+                {
+                    if (selectedSenders.contains(it)) {
+                        selectedSenders.remove(it)
+                    } else
+                        selectedSenders.add(it)
 
-             },{
-                 val list = mutableListOf<String>()
-                 selectedSenders.forEach() {
-                     list.add(it.email)
-                 }
-                     list.add("968") // add my id TODO current user id
-                 var data = CreateGroupData(it, list,"968")  //TODO  user id
+                }, {
+                    val list = mutableListOf<String>()
+                    selectedSenders.forEach() {
+                        list.add(it.email)
+                    }
+                    list.add("968") // add my id TODO current user id
+                    var data = CreateGroupData(it, list, "968")  //TODO  user id
 
-                 val apiService =RetrofitBuilder.create()
-                 apiService.create_group(data).enqueue((object : retrofit2.Callback<GroupId> {
-                     override fun onResponse(call: retrofit2.Call<GroupId>, response: retrofit2.Response<GroupId>) {
-                         if (response.isSuccessful) {
-                             CoroutineScope(Dispatchers.IO).launch {
-                                 response.body()?.id.let { id ->
-                                     groupDatabase.groupDao()
-                                         .insertNewGroup(Group(0, it, id ?: "", 0))
-
-                                         selectedSenders.forEach() {
-                                             groupDatabase.withTransaction {
-                                             groupDatabase.groupMemberDao()
-                                                 .insertNewMember(GroupMember(0,it.email,it.name,id?:"",0))
-                                         }
-                                     }
-                                 }
-                             }
-                         } else {
-                             // Handle error response
-                             println("Failed Group create message result " + response.message())
-                         }
-                     }
-
-                     override fun onFailure(call: retrofit2.Call<GroupId>, t: Throwable) {
-                         println("Failed Group create message result " + t.message + " "+ call)
-                     }
-                 }))
-             })
-            Column() {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 15.dp, end = 10.dp, top = 15.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.drawer),
-                        contentDescription = "",
-                        modifier = Modifier.size(30.dp)
-                    )
-                    Text(
-                        text = "MESSAGES",
-                        modifier = Modifier.fillMaxWidth(0.9f),
-                        textAlign = TextAlign.Center,
-                        fontFamily = FontFamily(
-                            Font(R.font.josefinsans)
-                        )
-                    )
-                    if (showStatus)
-                        Image(
-                            painter = painterResource(id = R.drawable.profile_placeholder),
-                            contentDescription = "",
-                            modifier = Modifier
-                                .size(28.dp)
-                                .clip(RoundedCornerShape(20.dp))
-                                .background(Color.Gray)
-                                .align(Alignment.CenterVertically)
-                        ) else {
-                        IconButton(onClick = {
-                            if (currentRoute == BottomNavItem.Group.route) {
-                                showUserListBottomSheet = true
-                                selectedSenders.clear()
+                    val apiService = RetrofitBuilder.create()
+                    apiService.create_group(data).enqueue((object : retrofit2.Callback<GroupId> {
+                        override fun onResponse(
+                            call: retrofit2.Call<GroupId>,
+                            response: retrofit2.Response<GroupId>
+                        ) {
+                            if (response.isSuccessful) {
                                 CoroutineScope(Dispatchers.IO).launch {
-                                    database.senderDao().getAllSenders().collect {
-                                        senderList.clear()
-                                        senderList.addAll(it)
+                                    response.body()?.id.let { id ->
+                                        groupDatabase.groupDao()
+                                            .insertNewGroup(Group(0, it, id ?: "", 0))
+
+                                        selectedSenders.forEach() {
+                                            groupDatabase.withTransaction {
+                                                groupDatabase.groupMemberDao()
+                                                    .insertNewMember(
+                                                        GroupMember(
+                                                            0,
+                                                            it.email,
+                                                            it.name,
+                                                            id ?: "",
+                                                            0
+                                                        )
+                                                    )
+                                            }
+                                        }
                                     }
                                 }
-                            } else if (currentRoute == BottomNavItem.Channel.route) {
-                                 intent = Intent(context, CreateChannelActivity::class.java)
-                                startActivity(intent)
+                            } else {
+                                // Handle error response
+                                println("Failed Group create message result " + response.message())
                             }
                         }
-                        ) {
-                            Icon(Icons.Default.Add, contentDescription = "", tint = Color.White)
+
+                        override fun onFailure(call: retrofit2.Call<GroupId>, t: Throwable) {
+                            println("Failed Group create message result " + t.message + " " + call)
+                        }
+                    }))
+                })
+        Column() {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 15.dp, end = 10.dp, top = 15.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.drawer),
+                    contentDescription = "",
+                    modifier = Modifier.size(30.dp)
+                )
+                Text(
+                    text = "MESSAGES",
+                    modifier = Modifier.fillMaxWidth(0.9f),
+                    textAlign = TextAlign.Center,
+                    fontFamily = FontFamily(
+                        Font(R.font.josefinsans)
+                    )
+                )
+                if (showStatus)
+                    Image(
+                        painter = painterResource(id = R.drawable.profile_placeholder),
+                        contentDescription = "",
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(Color.Gray)
+                            .align(Alignment.CenterVertically)
+                    ) else {
+                    IconButton(onClick = {
+                        if (currentRoute == BottomNavItem.Group.route) {
+                            showUserListBottomSheet = true
+                            selectedSenders.clear()
+                            CoroutineScope(Dispatchers.IO).launch {
+                                database.senderDao().getAllSenders().collect {
+                                    senderList.clear()
+                                    senderList.addAll(it)
+                                }
+                            }
+                        } else if (currentRoute == BottomNavItem.Channel.route) {
+                            intent = Intent(context, CreateChannelActivity::class.java)
+                            startActivity(intent)
                         }
                     }
-                }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(padding),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (showStatus)
-                        StatusChatList()
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = "", tint = Color.White)
+                    }
                 }
             }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(padding),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (showStatus)
+                    StatusChatList()
+            }
+        }
     }
+
+    @SuppressLint("MissingPermission")
+    override fun onVideoCallReceived(callerId: String, context: Context) {
+       // Intent for "Answer" action
+    val answerIntent = Intent(this, RTCActivity::class.java)
+        answerIntent.action = "ACTION_ANSWER_CALL"
+        answerIntent.putExtra("isVideoCall",true);
+        answerIntent.putExtra("isJoin",true);
+        answerIntent.putExtra("calleeId",MY_ID);
+        answerIntent.putExtra("callerId",callerId);
+    val answerPendingIntent = PendingIntent.getBroadcast(
+        context,
+        0,
+        answerIntent,
+        PendingIntent.FLAG_UPDATE_CURRENT
+    )
+
+    // Intent for "Decline" action
+    val declineIntent = Intent(this, MainActivity::class.java)
+    declineIntent.action = "ACTION_DECLINE_CALL"
+    val declinePendingIntent = PendingIntent.getBroadcast(
+        context,
+        0,
+        declineIntent,
+        PendingIntent.FLAG_UPDATE_CURRENT
+    )
+
+    // Build the notification with actions
+    val notification = NotificationCompat.Builder(this, "incoming_call_channel_id")
+        .setContentTitle("Incoming Call")
+        .setContentText("John Doe is calling")
+        .setSmallIcon(R.drawable.ic_call)
+        .addAction(R.drawable.ic_call, "Answer", answerPendingIntent)
+        .addAction(R.drawable.ic_baseline_call_end_24, "Decline", declinePendingIntent)
+        .setPriority(NotificationCompat.PRIORITY_HIGH)
+        .setAutoCancel(false)
+        .build()
+
+    // Show the notification
+    val notificationManager = NotificationManagerCompat.from(context)
+    notificationManager.notify(1, notification)
+
+    // Schedule automatic dismissal after 30 seconds
+    Handler(Looper.getMainLooper()).postDelayed({
+        notificationManager.cancel(1) // Remove the notification after 30 seconds
+    }, 30000) // 30 seconds delay
+}
+
+    override fun onAudioCallReceived(callerId: String, context: Context) {
+        TODO("Not yet implemented")
+    }
+
 
 }

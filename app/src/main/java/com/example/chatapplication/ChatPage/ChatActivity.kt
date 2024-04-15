@@ -3,6 +3,7 @@ package com.example.chatapplication.ChatPage
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -56,6 +57,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.DpOffset
@@ -64,6 +67,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.ViewModelProvider
 import androidx.room.withTransaction
+ import com.example.Constants.INCOMING_VIDEO_CALL
 import com.example.Constants.MY_ID
 import com.example.chatapplication.GroupPage.GroupChatVMFactory
 import com.example.chatapplication.GroupPage.GroupChatViewModel
@@ -73,6 +77,7 @@ import com.example.chatapplication.R
 import com.example.chatapplication.Repository.ChannelChatRepo
 import com.example.chatapplication.Repository.ChatRepository
 import com.example.chatapplication.Repository.GroupChatRepo
+import com.example.chatapplication.WebSocket.WebSocketClient
 import com.example.chatapplication.channel.ChannelChatVMFactory
 import com.example.chatapplication.channel.ChannelChatViewModel
 import com.example.chatapplication.channel.ChannelVMFactory
@@ -83,9 +88,14 @@ import com.example.chatapplication.db.channeldb.ChannelDatabase
 import com.example.chatapplication.db.channeldb.ChannelMessage
 import com.example.chatapplication.db.groupdb.GroupDatabase
 import com.example.chatapplication.db.groupdb.GroupMessage
-import com.example.util.ChannelMessageData
+ import com.example.chatapplication.webRTC.RTCActivity
+ import com.example.util.ChannelMessageData
 import com.example.util.util
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import com.google.firebase.Firebase
+import com.google.firebase.firestore.SetOptions
+import com.google.firebase.firestore.firestore
+import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -186,7 +196,7 @@ class ChatActivity : ComponentActivity() {
                                 shape = RoundedCornerShape(bottomEnd = 20.dp, bottomStart = 20.dp)
                             ) {
                                 if (!showActions.value)
-                                    TopBarDesign()
+                                    TopBarDesign(type)
                                 else
                                     LongClickTopBarDesign(
                                         selectedMessageListSize.value == 1 && selectedMessageList.get(0).isReceived == 1,
@@ -475,7 +485,7 @@ class ChatActivity : ComponentActivity() {
     }
 
     @Composable
-    private fun TopBarDesign() {
+    private fun TopBarDesign(type: String?) {
         val intent = Intent(this,InfoActivity::class.java)
 
         Column() {
@@ -504,13 +514,15 @@ class ChatActivity : ComponentActivity() {
                         .align(Alignment.CenterVertically)
                 )
                 Spacer(modifier = Modifier.width(15.dp))
-                Column(verticalArrangement = Arrangement.Center, modifier = Modifier.clickable {
-                    intent.putExtra("type", type)
-                    intent.putExtra("id", id)
 
 
-                    startActivity(intent)
-                }) {
+                Column(verticalArrangement = Arrangement.Center, modifier = Modifier
+                    .clickable {
+                        intent.putExtra("type", type)
+                        intent.putExtra("id", id)
+                        startActivity(intent)
+                    }
+                    .weight(1f)) {
                     displayName?.let {
                         Text(
                             text = it, fontSize = 17.sp,
@@ -522,9 +534,80 @@ class ChatActivity : ComponentActivity() {
                         text = "Online", fontSize = 12.sp,
                         color = colorResource(id = R.color.white_variant)
                     )
-
                 }
 
+                if(type != null && type == "individual") {
+                    Box(modifier = Modifier
+                        .padding(end = 15.dp)
+                        .height(39.dp)
+                        .width(42.dp)
+                        .clip(RoundedCornerShape(11.dp))
+                        .clickable {
+                            GlobalScope.launch {
+                                Firebase.firestore
+                                    .collection("users")
+                                    .document(id ?: "")
+                                    .set(
+                                        hashMapOf(
+                                            "status" to INCOMING_VIDEO_CALL,
+                                            "callerId" to MY_ID,
+                                            "timestamp" to System.currentTimeMillis()
+                                        ) as Map<String, Any>, SetOptions.merge()
+                                    )
+                            }
+                            val intent = Intent(baseContext, RTCActivity::class.java)
+                            intent.putExtra("isVideoCall", false);
+                            intent.putExtra("isJoin", false);
+                            intent.putExtra("calleeId", id);
+                            intent.putExtra("callerId", MY_ID);
+                            Log.d(RTCActivity.TAGGER, "calleeId = $id callerId = $MY_ID ")
+
+                            startActivity(intent)
+                        }
+                        .background(colorResource(id = R.color.primary_variant)),
+                        contentAlignment = Alignment.Center) {
+                        Icon(painter = painterResource(id = R.drawable.ic_call), contentDescription = "",
+                            tint = Color.White, modifier = Modifier
+                                .height(28.dp)
+                                .width(30.dp))
+                    }
+
+
+                    Box(modifier = Modifier
+                        .padding(end = 15.dp)
+                        .height(39.dp)
+                        .width(42.dp)
+                        .clip(RoundedCornerShape(11.dp))
+                        .clickable {
+                            GlobalScope.launch {
+                                Firebase.firestore
+                                    .collection("users")
+                                    .document(id ?: "")
+                                    .set(
+                                        hashMapOf(
+                                            "status" to INCOMING_VIDEO_CALL,
+                                            "callerId" to MY_ID,
+                                            "timestamp" to System.currentTimeMillis()
+                                        ) as Map<String, Any>, SetOptions.merge()
+                                    )
+                            }
+                            val intent = Intent(baseContext, RTCActivity::class.java)
+                            intent.putExtra("isVideoCall", true);
+                            intent.putExtra("isJoin", false);
+                            intent.putExtra("calleeId", id);
+                            intent.putExtra("callerId", MY_ID);
+                            Log.d(RTCActivity.TAGGER, "calleeId = $id callerId = $MY_ID ")
+
+                            startActivity(intent)
+                        }
+                        .background(colorResource(id = R.color.primary_variant)),
+                        contentAlignment = Alignment.Center) {
+                        Icon(painter = painterResource(id = R.drawable.video_call), contentDescription = "",
+                            tint = Color.White, modifier = Modifier
+                                .height(28.dp)
+                                .width(30.dp))
+                    }
+                }
             }
         }
     }
