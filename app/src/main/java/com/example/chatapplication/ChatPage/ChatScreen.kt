@@ -24,7 +24,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
+ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
@@ -41,6 +41,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.Button
 import androidx.compose.material.IconButton
 import androidx.compose.material.LinearProgressIndicator
 import androidx.compose.material.ProgressIndicatorDefaults
@@ -105,6 +106,7 @@ import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.Constants.EXT_DIR_IMAGE_LOCATION
 import com.example.Constants.MESSAGE_TYPE_AUDIO
 import com.example.Constants.MESSAGE_TYPE_IMAGE
+import com.example.Constants.MY_ID
 import com.example.chatapplication.GroupPage.GroupChatViewModel
 import com.example.chatapplication.R
 import com.example.chatapplication.channel.ChannelChatViewModel
@@ -131,7 +133,7 @@ import java.util.Locale
 
 
 lateinit var bottomSheetVisible:MutableState<Boolean>
-var userId: String = "968"
+var userId: String = ""
 var audioLocation: File? = null
 private lateinit var context: Context
 private var recorder: MediaRecorder? = null
@@ -139,11 +141,9 @@ private var sender_group_id: String? = null
 
 
 @Composable
-fun DbMessageList(
-    context2: Context,  ){
+fun PublicChannel(context2: Context, id: String, onJoinClicked: ()->Unit ){
 
     context = context2
-
     var chatList  = remember {
         mutableStateListOf<ChannelMessage>()
     }
@@ -153,7 +153,7 @@ fun DbMessageList(
 
     LaunchedEffect(Unit) {
         CoroutineScope(Dispatchers.IO).launch {
-            val snapShotList = getChannelChats("968", null)
+            val snapShotList = getChannelChats(id, null)
            var result = snapShotList.mapNotNull { document ->
                  document.toObject(ChannelMessage::class.java)
             }
@@ -170,7 +170,7 @@ fun DbMessageList(
         color = colorResource(id = R.color.background),
 
         ) {
-        Column(modifier = Modifier.padding(start = 8.dp, end = 8.dp,top=8.dp, bottom = 5.dp)) {
+        Column(modifier = Modifier.fillMaxHeight().padding(start = 8.dp, end = 8.dp,top=8.dp, bottom = 5.dp)) {
             LazyColumn(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -190,7 +190,7 @@ fun DbMessageList(
                     LaunchedEffect(idx == chatList.size -5) {
                          // pagination
                         CoroutineScope(Dispatchers.IO).launch {
-                           val snapShotList = getChannelChats("968", lastMessage)
+                           val snapShotList = getChannelChats(MY_ID, lastMessage)
                             var result = snapShotList.mapNotNull { document ->
                                 document.toObject(ChannelMessage::class.java)
                             }
@@ -200,14 +200,64 @@ fun DbMessageList(
                     }
                 }
             }
+
+            Button(onClick = {
+                onJoinClicked()
+            },
+                modifier = Modifier.fillMaxWidth().height(50.dp)) {
+                Text(text = "Join", color = Color.White)
+            }
+        }
+
+    }
+}
+
+
+@Composable
+fun JoinedChannelChats(
+    context2: Context, viewModel: ChannelChatViewModel,id:String ){
+    context = context2
+    sender_group_id = viewModel.id
+    val chatList = viewModel.chatListState.collectAsState()
+    val listState = rememberLazyListState()
+
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = colorResource(id = R.color.background),
+
+        ) {
+        Column(modifier = Modifier.padding(start = 8.dp, end = 8.dp,top=8.dp, bottom = 5.dp)) {
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                state = listState,
+                reverseLayout = true
+            ) {
+                itemsIndexed(chatList.value) {idx,it->
+
+                    var bubbleSelected by remember {
+                        mutableStateOf(false)
+                    }
+                    val msg = Message(it.messageId,it.channelId,it.messageType,it.message,1,it.receiveTime)
+                    ChatBubble(msg,"", bubbleSelected, context,
+                        {// onclick
+                        }){
+                        // onLongClick
+                    }
+
+                    if(idx == chatList.value.size -5) { // pagination
+                        viewModel.loadOldMessage()
+                    }
+                }
+            }
+
         }
     }
 
 }
 
-
 @Composable
-fun ChannelContentList(
+fun MyChannels(
     context2: Context, viewModel: ChannelChatViewModel, messageListSize:Int,addSelected:(data: Message)->Unit,
     removeSelected:(data:Message)->Unit, onLongClick:(data:Message)->Unit, defaultText: String,
     onMessageSend:(message:Message)->Unit){
@@ -242,7 +292,7 @@ fun ChannelContentList(
                     var bubbleSelected by remember {
                         mutableStateOf(false)
                     }
-                    val msg = Message(it.messageId,it.channelId,it.messageType,it.message,1,it.receiveTime)
+                    val msg = Message(it.messageId,it.channelId,it.messageType,it.message,0,it.receiveTime)
                     ChatBubble(msg,"", bubbleSelected, context,
                         {
                             // onclick
@@ -343,11 +393,12 @@ fun GroupChatContentList(  context2: Context, viewModel: GroupChatViewModel, mes
 
 @Composable
 fun ChatsContentList(
-    context2: Context, chatViewModel: ChatViewModel, messageListSize:Int, addSelected:(data: Message)->Unit,
+    context2: Context, chatViewModel: ChatViewModel,receiverId: String, messageListSize:Int, addSelected:(data: Message)->Unit,
     removeSelected:(data:Message)->Unit, onLongClick:(data:Message)->Unit, defaultText: String,
     onMessageSend:(message:Message)->Unit ){
 
     context = context2
+    userId =receiverId;
     sender_group_id = chatViewModel.senderId
     val chatList = chatViewModel.chatListState.collectAsState()
     val listState = rememberLazyListState()
@@ -491,7 +542,7 @@ fun sendMessageBox(defaultText:String,onSend: (msg: Message)->Unit){
                                     if (messageText.isNotEmpty()) {
                                         val time = System.currentTimeMillis()
                                         var msg = Message(
-                                            userId + time,
+                                            MY_ID+ time,
                                             sender_group_id ?: "",
                                             "text",
                                             messageText,
@@ -529,14 +580,14 @@ fun sendMessageBox(defaultText:String,onSend: (msg: Message)->Unit){
 
 
                             if (isRecording) {
-                                val audioFileName = "${userId}_${ System.currentTimeMillis()}.wav"
+                                val audioFileName = "${MY_ID}_${ System.currentTimeMillis()}.wav"
                                  audioLocation = File(rootDir,audioFileName)
                                 startRecording(audioLocation!!)
                             } else {
                                 stopRecording()
                                 val time = System.currentTimeMillis()
-                                userId
-                                val msg = Message("$userId$time",
+
+                                val msg = Message("$MY_ID$time",
                                     sender_group_id?:"",MESSAGE_TYPE_AUDIO,audioLocation.toString()
                                 ,0,time,time)
                                 onSend(msg)
@@ -587,7 +638,7 @@ fun ChatBubble(messageObj: Message,senderName: String,isBubbleSelected: Boolean,
     val startPadding = if (isReceived) 8.dp else  65.dp
     val endPadding = if (isReceived)  65.dp else 8.dp
     val selectedColor =
-        if (isBubbleSelected) colorResource(id = R.color.primary_variant) else Color.Transparent
+        if (isBubbleSelected) colorResource(id = R.color.primary_variant).copy(0.7f) else Color.Transparent
     var bubblePadding = PaddingValues(
         start = startPadding, end = endPadding
     )
@@ -643,7 +694,7 @@ fun ChatBubble(messageObj: Message,senderName: String,isBubbleSelected: Boolean,
                                             .padding(bottom = 8.dp)
                                             .align(Alignment.CenterVertically)
                                             .weight(1f, false),
-                                        color = Color.DarkGray,
+                                        color = colorText,
                                         fontStyle = FontStyle.Italic
                                     )
                                 }
@@ -925,7 +976,7 @@ fun showBottomSheet(onSend: (msg: Message) -> Unit, context: Context) {
 
                     onSend(
                         Message(
-                            userId + time,userId, "image",
+                            MY_ID + time,userId, "image",
                             "$imageFile", 0, time, time
                         )
                     )

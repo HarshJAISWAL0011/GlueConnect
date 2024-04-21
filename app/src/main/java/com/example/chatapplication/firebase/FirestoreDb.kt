@@ -22,10 +22,12 @@ import com.example.chatapplication.db.Message
 import com.example.chatapplication.db.SQLFuntions
 import com.example.chatapplication.db.Sender
 import com.example.chatapplication.db.channeldb.ChannelMessage
+import com.example.chatapplication.db.channeldb.Channels
 import com.example.retrofit.RetrofitBuilder
 import com.example.util.ChannelData
 import com.example.util.CreateChannelData
 import com.example.util.DeleteMessageData
+import com.example.util.SendGroupMessage
 import com.example.util.util.URLdownloadFile
 import com.google.android.gms.tasks.Task
 import com.google.android.gms.tasks.TaskCompletionSource
@@ -34,8 +36,10 @@ import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreSettings
 import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
+import com.google.gson.JsonObject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -43,8 +47,10 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
  import kotlinx.coroutines.tasks.await
+import org.json.JSONObject
 import retrofit2.Callback
 import retrofit2.Call
 import retrofit2.Response
@@ -163,7 +169,6 @@ object  FirestoreDb {
             }
 
             override fun onFailure(call: Call<String>, t: Throwable) {
-                TODO("Not yet implemented")
             }
         }))
     }
@@ -187,13 +192,13 @@ object  FirestoreDb {
                     db.collection(path_users).document(data.creatorId)
                         .collection(path_groups)
                         .document("created")
-                        .update(groupData)
+                        .set(groupData,  SetOptions.merge())
                         .addOnCompleteListener { innerTask ->
                             if (innerTask.isSuccessful) {
                                 result.setResult(id) // Complete the CompletableFuture when both tasks are successful
                             } else {
                                 result.setException(innerTask.exception!!)
-                                println("Exceiption ${innerTask.exception}")
+                                println("Exception ${innerTask.exception}")
                             }
                         }
                 } else {
@@ -204,7 +209,18 @@ object  FirestoreDb {
         return result.task
     }
 
+    fun sendMessageToGroup(message: JSONObject, ){
+        val db = Firebase.firestore
+        println(message)
+        val map = mutableMapOf<String, Any>()
 
+        // Iterate over the keys in the JSONObject
+        message.keys().forEach { key ->
+            val value = message.opt(key) ?: JSONObject.NULL // Get the value or null
+            map[key] = value // Store the key-value pair in the map
+        }
+        db.collection(path_groups).document(message.getString("group_id")).collection(Constants.message).add(map)
+    }
     suspend fun getChannelList(id: String, searchText: String): List<ChannelData> {
         val db = FirebaseFirestore.getInstance()
         val collectionRef = db.collection(path_channels)
@@ -229,6 +245,22 @@ object  FirestoreDb {
         }
 
         return dataList
+    }
+
+   suspend fun getChannelFromId(id: String): Channels?{
+        val db = FirebaseFirestore.getInstance()
+        val collectionRef = db.collection(path_channels).document(id)
+        try {
+            val querySnapshot = collectionRef.get().await()
+            val channelData = Channels(0,querySnapshot.get("name").toString(),querySnapshot.id,0,querySnapshot.get("description").toString(),
+                querySnapshot.get("followers")?.toString()?.toInt() ?:  0,0,querySnapshot.get("creationDate")?.toString()?.toLong()?:0,
+                querySnapshot.get("channelType")?.toString()?:"")
+
+            return channelData
+        }catch (e: Exception) {
+            println("Error fetching channel list: ${e.message}")
+            return null
+        }
     }
 
     suspend fun getChannelChats(id:String,lastItem: DocumentSnapshot?):List< DocumentSnapshot>{

@@ -6,9 +6,11 @@ import com.example.Constants.FOLDER_IMAGES
 import com.example.Constants.FOLDER_OTHERS
 import com.example.Constants.MESSAGE_TYPE_AUDIO
 import com.example.Constants.MESSAGE_TYPE_IMAGE
+import com.example.Constants.MY_ID
 import com.example.chatapplication.WebSocket.WebSocketClient
 import com.example.chatapplication.db.groupdb.GroupDatabase
 import com.example.chatapplication.db.groupdb.GroupMessage
+import com.example.chatapplication.firebase.FirestoreDb
 import com.example.util.GroupMessageData
 import com.example.util.SendGroupMessage
 import com.example.util.SendMessage
@@ -35,7 +37,7 @@ class GroupChatRepo (var groupId: String ,var database: GroupDatabase, val group
             util.uploadFile( folder,message.message).addOnCompleteListener { task ->
                 val downloadUri = task.result
                 val messageFormat = SendGroupMessage(
-                    "968",
+                    MY_ID,
                     downloadUri.toString(),
                     message.messageId,
                     message.messageType,
@@ -43,10 +45,11 @@ class GroupChatRepo (var groupId: String ,var database: GroupDatabase, val group
                     groupName
                 )
                 WebSocketClient.webSocket?.send(messageFormat.jsonObject.toString())
+                FirestoreDb.sendMessageToGroup(messageFormat.jsonObject)
             }
         }else{
             val messageFormat = SendGroupMessage(
-                "968",
+                MY_ID,
                 message.message,
                 message.messageId,
                 message.messageType,
@@ -54,13 +57,15 @@ class GroupChatRepo (var groupId: String ,var database: GroupDatabase, val group
                 groupName
             )
             WebSocketClient.webSocket?.send(messageFormat.jsonObject.toString())
+            FirestoreDb.sendMessageToGroup(messageFormat.jsonObject)
+
         }
     }
 
     suspend fun update(message: GroupMessage) {
         database.groupMessageDao().editMessage(message)
         val messageFormat = SendGroupMessage(
-            "968",
+            MY_ID,
             message.message,
             message.messageId,
             message.messageType,
@@ -68,6 +73,7 @@ class GroupChatRepo (var groupId: String ,var database: GroupDatabase, val group
             groupName
         ) // should send message id not pK
         WebSocketClient.webSocket?.send(messageFormat.jsonObject.toString())
+        FirestoreDb.sendMessageToGroup(messageFormat.jsonObject)
     }
 
     suspend fun getOlderMessages(): List<GroupMessageData>? {

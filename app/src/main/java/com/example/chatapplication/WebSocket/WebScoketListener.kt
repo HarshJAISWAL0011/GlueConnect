@@ -47,7 +47,6 @@ object webSocketListener : WebSocketListener() {
     override fun onOpen(webSocket: WebSocket, response: Response) {
         super.onOpen(webSocket, response)
         val id = MY_ID
-//        val id  = "2005"
         val report = NewConnection(id)
         webSocket.send(report.jsonObject.toString())
         Log.d(TAG, "onOpen:")

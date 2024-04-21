@@ -16,7 +16,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -30,6 +30,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Card
+import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.DropdownMenu
 import androidx.compose.material.DropdownMenuItem
 import androidx.compose.material.IconButton
@@ -41,6 +42,8 @@ import androidx.compose.material.TextFieldDefaults
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -62,15 +65,20 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextIndent
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.graphics.drawable.toBitmap
 import com.example.Constants
 import com.example.Constants.EXT_DIR_PROFILE_LOCATION
 import com.example.Constants.FOLDER_PROFILE
+import com.example.Constants.MY_ID
 import com.example.chatapplication.ChatPage.userId
 import com.example.chatapplication.R
 import com.example.chatapplication.WebSocket.WebSocketClient
@@ -84,6 +92,7 @@ import com.example.util.util.uploadFile
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -91,8 +100,12 @@ import java.util.Locale
 
 
 private var uri: Uri? = null
+val customFontFamily = FontFamily(
+    Font(R.font.slab, weight = FontWeight.Normal)
+)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CreateChannelPage(database: ChannelDatabase) {
+fun CreateChannelPage(database: ChannelDatabase, onDone: ()-> Unit) {
 
     val desc = remember { mutableStateOf(TextFieldValue("")) }
     val name = remember { mutableStateOf(TextFieldValue("")) }
@@ -101,6 +114,7 @@ fun CreateChannelPage(database: ChannelDatabase) {
     var nameError by remember { mutableStateOf(false) }
     var descError by remember { mutableStateOf(false) }
     var bitmap by remember { mutableStateOf<ImageBitmap?>(null) }
+    var showDialogState by remember { mutableStateOf(false) }
 
 
     val context = LocalContext.current
@@ -123,66 +137,124 @@ fun CreateChannelPage(database: ChannelDatabase) {
     Surface(
         color = colorResource(id = R.color.background)
     ) {
+        Column {
 
 
-    Column (
-        modifier = Modifier.padding(top = 35.dp, start = 20.dp,end = 20.dp)
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically
-        ) {
 
-            Card(
-                backgroundColor = colorResource(id = R.color.background),
-                modifier = Modifier
-                    .clip(CircleShape)
-                    .background(Color.Yellow)
-                    .size(80.dp)
-            ) {
-                Box(
+        if (showDialogState) {
+            AlertDialog(
+                onDismissRequest = { },
+                modifier = Modifier.background(Color.Transparent),
+            )
+            {
+                Column(
                     modifier = Modifier
-                        .background(Color.Cyan)
-                        .fillMaxSize()
+                        .fillMaxWidth()
+                        .background(Color.Transparent)
                 ) {
-                    bitmap?.let { loadedBitmap ->
-                        Image(
-                            bitmap  = loadedBitmap,
-                            contentDescription = "",
-                            modifier = Modifier
-                                .fillMaxSize()
-
-                                .align(Alignment.CenterStart)
-                                .background(Color.Gray)
-                        )
-                    }
-                    Card(
-                        backgroundColor =  colorResource(id = R.color.primary).copy(0.7f),
-                        modifier = Modifier
-                            .width(80.dp)
-                            .height(25.dp)
-                            .align(Alignment.BottomStart)
-                    ) {
-                        IconButton(
-                            onClick = {  selectImageLauncher.launch("image/*") },
-                            modifier = Modifier
-                                .padding(bottom = 0.dp)
-                                .align(Alignment.BottomCenter)
-                        ) {
-                            Icon(Icons.Default.Edit, contentDescription = "", tint = Color.Black)
-                        }
-                    }
-
-
+                    CircularProgressIndicator(
+                        color = colorResource(id = R.color.primary),
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    )
                 }
+
             }
+        }
 
 
+
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxSize()
+                .padding(top = 35.dp, start = 20.dp, end = 20.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+
+                Card(
+                    backgroundColor = colorResource(id = R.color.background),
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(Color.Yellow)
+                        .size(80.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .background(Color.Cyan)
+                            .fillMaxSize()
+                    ) {
+                        bitmap?.let { loadedBitmap ->
+                            Image(
+                                bitmap = loadedBitmap,
+                                contentDescription = "",
+                                modifier = Modifier
+                                    .fillMaxSize()
+
+                                    .align(Alignment.CenterStart)
+                                    .background(Color.Gray)
+                            )
+                        }
+                        Card(
+                            backgroundColor = colorResource(id = R.color.primary).copy(0.7f),
+                            modifier = Modifier
+                                .width(80.dp)
+                                .height(25.dp)
+                                .align(Alignment.BottomStart)
+                        ) {
+                            IconButton(
+                                onClick = { selectImageLauncher.launch("image/*") },
+                                modifier = Modifier
+                                    .padding(bottom = 0.dp)
+                                    .align(Alignment.BottomCenter)
+                            ) {
+                                Icon(
+                                    Icons.Default.Edit,
+                                    contentDescription = "",
+                                    tint = Color.Black
+                                )
+                            }
+                        }
+
+
+                    }
+                }
+
+
+                TextField(
+                    value = name.value,
+                    onValueChange = { name.value = it },
+                    maxLines = 2,
+                    isError = nameError,
+                    placeholder = { Text(text = "name") },
+                    colors = TextFieldDefaults.textFieldColors(
+                        textColor = Color.Black.copy(0.8f),
+                        backgroundColor = Color.Transparent,
+                        cursorColor = colorResource(id = R.color.primary),
+                        focusedIndicatorColor = colorResource(id = R.color.primary),
+                        unfocusedIndicatorColor = colorResource(id = R.color.primary).copy(0.7f),
+                    ),
+                    textStyle = TextStyle(fontSize = 17.sp),
+                    modifier = Modifier
+                        .padding(horizontal = 10.dp)
+                        .defaultMinSize(minHeight = 1.dp)
+
+                )
+
+            }
+            Text(
+                text = "Description", modifier = Modifier.padding(top = 25.dp, bottom = 15.dp),
+                fontSize = 17.sp
+            )
+
+            val desc = remember { mutableStateOf(TextFieldValue()) }
             TextField(
-                value = name.value,
-                onValueChange = {name.value = it},
-                maxLines = 2,
-                isError =nameError,
-                placeholder = { Text(text = "name") },
+                value = desc.value,
+                onValueChange = { desc.value = it },
+                maxLines = 5,
+                isError = descError,
+                placeholder = { Text(text = "Description") },
                 colors = TextFieldDefaults.textFieldColors(
                     textColor = Color.Black.copy(0.8f),
                     backgroundColor = Color.Transparent,
@@ -192,97 +264,74 @@ fun CreateChannelPage(database: ChannelDatabase) {
                 ),
                 textStyle = TextStyle(fontSize = 17.sp),
                 modifier = Modifier
-                    .padding(horizontal = 10.dp)
-                    .defaultMinSize(minHeight = 1.dp)
-
-            )
-
-        }
-        Text(
-            text = "Description", modifier = Modifier.padding(top = 25.dp, bottom = 15.dp),
-            fontSize = 17.sp
-        )
-
-        val desc = remember { mutableStateOf(TextFieldValue()) }
-        TextField(
-            value = desc.value,
-            onValueChange = {desc.value = it},
-            maxLines = 5,
-            isError =descError,
-            placeholder = { Text(text = "Description") },
-            colors = TextFieldDefaults.textFieldColors(
-                textColor = Color.Black.copy(0.8f),
-                backgroundColor = Color.Transparent,
-                cursorColor = colorResource(id = R.color.primary),
-                focusedIndicatorColor = colorResource(id = R.color.primary),
-                unfocusedIndicatorColor = colorResource(id = R.color.primary).copy(0.7f),
-            ),
-            textStyle = TextStyle(fontSize = 17.sp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(end = 20.dp)
-                .defaultMinSize(minHeight = 1.dp)
-
-        )
-
-
-
-        Column {
-            var expanded by remember { mutableStateOf(false) }
-
-
-            TextField(
-                value = options[selectedIndex],
-                onValueChange = {},
-                readOnly = true,
-                trailingIcon = {
-                               Icon(Icons.Default.ArrowDropDown, contentDescription ="", tint = colorResource(
-                                   id = R.color.primary
-                               ) )
-                },
-                maxLines = 1,
-                enabled = false,
-                placeholder = { Text(text = "Select channel type") },
-                colors = TextFieldDefaults.textFieldColors(
-                    textColor = Color.Black.copy(0.8f),
-                    backgroundColor = Color.Transparent,
-                    disabledTrailingIconColor = colorResource(id = R.color.primary),
-                    cursorColor = colorResource(id = R.color.primary),
-                    disabledTextColor = Color.Black.copy(0.8f),
-                    focusedIndicatorColor = colorResource(id = R.color.primary),
-                    disabledIndicatorColor = colorResource(id = R.color.primary).copy(0.7f),
-                ),
-                textStyle = TextStyle(fontSize = 17.sp),
-                modifier = Modifier
                     .fillMaxWidth()
-                    .padding(end = 20.dp, top =  15.dp)
+                    .padding(end = 20.dp)
                     .defaultMinSize(minHeight = 1.dp)
-                    .clickable {expanded = !expanded}
-
 
             )
 
-            // Dropdown menu
-            DropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false },
-            ) {
-                options.forEachIndexed { index, option ->
-                    DropdownMenuItem(
-                        onClick = {
-                            selectedIndex = index
-                            expanded = false
-                        }
-                    ) {
-                        Text(
-                            text = option,
-                            style = MaterialTheme.typography.body1,
-                            color = if (index == selectedIndex) MaterialTheme.colors.primary else Color.Unspecified
+
+
+            Column {
+                var expanded by remember { mutableStateOf(false) }
+
+
+                TextField(
+                    value = options[selectedIndex],
+                    onValueChange = {},
+                    readOnly = true,
+                    trailingIcon = {
+                        Icon(
+                            Icons.Default.ArrowDropDown,
+                            contentDescription = "",
+                            tint = colorResource(
+                                id = R.color.primary
+                            )
                         )
+                    },
+                    maxLines = 1,
+                    enabled = false,
+                    placeholder = { Text(text = "Select channel type") },
+                    colors = TextFieldDefaults.textFieldColors(
+                        textColor = Color.Black.copy(0.8f),
+                        backgroundColor = Color.Transparent,
+                        disabledTrailingIconColor = colorResource(id = R.color.primary),
+                        cursorColor = colorResource(id = R.color.primary),
+                        disabledTextColor = Color.Black.copy(0.8f),
+                        focusedIndicatorColor = colorResource(id = R.color.primary),
+                        disabledIndicatorColor = colorResource(id = R.color.primary).copy(0.7f),
+                    ),
+                    textStyle = TextStyle(fontSize = 17.sp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(end = 20.dp, top = 15.dp)
+                        .defaultMinSize(minHeight = 1.dp)
+                        .clickable { expanded = !expanded }
+
+
+                )
+
+                // Dropdown menu
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false },
+                ) {
+                    options.forEachIndexed { index, option ->
+                        DropdownMenuItem(
+                            onClick = {
+                                selectedIndex = index
+                                expanded = false
+                            }
+                        ) {
+                            Text(
+                                text = option,
+                                style = MaterialTheme.typography.body1,
+                                color = if (index == selectedIndex) MaterialTheme.colors.primary else Color.Unspecified
+                            )
+                        }
                     }
                 }
             }
-        }
             Row(
                 modifier = Modifier
                     .padding(top = 50.dp)
@@ -290,7 +339,9 @@ fun CreateChannelPage(database: ChannelDatabase) {
                 horizontalArrangement = Arrangement.End
             ) {
                 Button(
-                    onClick = { /*TODO*/ },
+                    onClick = {
+                        onDone()
+                    },
                     modifier = Modifier.padding(horizontal = 10.dp),
                     elevation = ButtonDefaults.elevation(defaultElevation = 0.dp),
                     colors = ButtonDefaults.buttonColors(
@@ -302,17 +353,24 @@ fun CreateChannelPage(database: ChannelDatabase) {
 
                 Button(
                     onClick = {
-                        if(uri == null){
-                            Toast.makeText(context,"Select image for channel",Toast.LENGTH_LONG).show()
-                        }else if(name.value.text.isEmpty()){
-                            Toast.makeText(context,"Name cannot be empty",Toast.LENGTH_LONG).show()
+                        if (uri == null) {
+                            Toast.makeText(context, "Select image for channel", Toast.LENGTH_LONG)
+                                .show()
+                        } else if (name.value.text.isEmpty()) {
+                            Toast.makeText(context, "Name cannot be empty", Toast.LENGTH_LONG)
+                                .show()
                             nameError = true
-                        }else if (desc.value.text.isEmpty()){
-                            Toast.makeText(context,"Description cannot be empty",Toast.LENGTH_LONG).show()
+                        } else if (desc.value.text.isEmpty()) {
+                            Toast.makeText(
+                                context,
+                                "Description cannot be empty",
+                                Toast.LENGTH_LONG
+                            ).show()
                             descError = true
-                        }else if(selectedIndex == 0){
-                            Toast.makeText(context,"Select channel type",Toast.LENGTH_LONG).show()
-                        }else {
+                        } else if (selectedIndex == 0) {
+                            Toast.makeText(context, "Select channel type", Toast.LENGTH_LONG).show()
+                        } else {
+                            showDialogState = true
                             CoroutineScope(Dispatchers.IO).launch {
                                 if (uri != null) {
                                     val timeStamp: String =
@@ -321,7 +379,10 @@ fun CreateChannelPage(database: ChannelDatabase) {
                                             Locale.getDefault()
                                         ).format(Date())
                                     val fileName = "JPEG_${timeStamp}.jpeg"
-                                    val dir = File(Environment.getExternalStorageDirectory(), EXT_DIR_PROFILE_LOCATION)
+                                    val dir = File(
+                                        Environment.getExternalStorageDirectory(),
+                                        EXT_DIR_PROFILE_LOCATION
+                                    )
 
                                     val file = File(dir, fileName)
 
@@ -343,11 +404,11 @@ fun CreateChannelPage(database: ChannelDatabase) {
                                             name.value.text,
                                             downloadUri.toString(),
                                             desc.value.text,
-                                            "968",
+                                            MY_ID,
                                             0,
                                             options[selectedIndex],
                                             System.currentTimeMillis()
-                                        )// @TODO your id
+                                        )
                                         createGroup(data).addOnCompleteListener {
                                             println(task)
                                             if (task.isSuccessful) {
@@ -359,9 +420,16 @@ fun CreateChannelPage(database: ChannelDatabase) {
                                                             it.result,
                                                             0,
                                                             desc.value.text,
-                                                            0
+                                                            0,
+                                                            1,
+                                                            System.currentTimeMillis(),
+                                                            options[selectedIndex]
                                                         )
                                                     )
+                                                    withContext(Dispatchers.Main) {
+                                                        showDialogState = false
+                                                    }
+                                                    onDone()
                                                 }
                                             }
                                         }
@@ -383,6 +451,30 @@ fun CreateChannelPage(database: ChannelDatabase) {
                 }
             }
 
+
         }
+
+        Disclaimer()
     }
+
+    }
+
+}
+
+
+@Composable
+private fun Disclaimer() {
+Card(
+    backgroundColor = colorResource(id = R.color.primary_variant),
+    shape = RoundedCornerShape(20.dp),
+    elevation = 5.dp,
+    modifier = Modifier.padding(15.dp)
+) {
+    val fontf = FontFamily( Font(resId = R.font.slab, weight = FontWeight.Bold))
+    Text(text = "Note:\nThis is public channel. This channel is visible to all the users. All the message should follow Terms & condition",
+        modifier = Modifier.padding(start = 10.dp, end = 10.dp, top = 18.dp, bottom = 18.dp), color = Color.White,
+     fontFamily = fontf
+    )
+
+}
 }

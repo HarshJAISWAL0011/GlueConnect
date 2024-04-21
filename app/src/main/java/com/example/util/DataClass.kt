@@ -62,7 +62,8 @@ data class ChannelsWithMessage(
     var messageType: String? = "text",
     var newMessageCount: Int,
     var last_message: String? = "",
-    var receiveTime: Long? = 0
+    var receiveTime: Long? = 0,
+    var isAdmin: Int
 )
 
 class SendMessage(sendToId:String, senderId: String, message: String,id:String, messageType:String){
@@ -92,14 +93,14 @@ class ChannelMessageData(var channelId: String,var message: String,var messageId
 }
 
 
-class SendGroupMessage(var senderId: String,var message: String,var id:String,var messageType:String,var groupId: String,var groupName: String){
+class SendGroupMessage(var senderId: String,var message: String,var messageId:String,var messageType:String,var groupId: String,var groupName: String){
     val jsonObject = JSONObject()
     init {
         jsonObject.put(Constants.type, Constants.new_group_message)
         jsonObject.put(Constants.senderId, senderId)
         jsonObject.put(Constants.timestamp, System.currentTimeMillis())
         jsonObject.put(Constants.message, message)
-        jsonObject.put(Constants.messageId, id )
+        jsonObject.put(Constants.messageId, messageId )
         jsonObject.put(Constants.messageType, messageType )
         jsonObject.put(Constants.GroupId, groupId )
         jsonObject.put(Constants.GroupName, groupName )
@@ -120,6 +121,11 @@ data class GroupMessageData(
     val groupId: String = ""
 )
 class Message(var receivedFrom:String,var message: String,var timestamp: Long,var isSender: Boolean){}
+
+data class TimeWithId(
+    val id: String,
+    val receiveTime: Long
+)
 
 data class DeleteMessageData(
     val userId: String,

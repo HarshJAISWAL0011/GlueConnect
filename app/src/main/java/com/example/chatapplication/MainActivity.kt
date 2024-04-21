@@ -42,7 +42,11 @@ import androidx.compose.material.Button
 import androidx.compose.material.IconButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
- import androidx.compose.material3.Card
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.ripple.LocalRippleTheme
+import androidx.compose.material.ripple.RippleAlpha
+import androidx.compose.material.ripple.RippleTheme
+import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -53,6 +57,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -65,9 +70,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
@@ -119,6 +126,7 @@ import com.example.chatapplication.db.groupdb.GroupDatabase
 import com.example.chatapplication.db.groupdb.GroupMember
 import com.example.chatapplication.db.groupdb.GroupMessage
 import com.example.chatapplication.firebase.FirestoreDb.getNewMessageFirestore
+import com.example.chatapplication.firebase.Listeners.messageListener
 import com.example.chatapplication.webRTC.IncomingCallListener
 import com.example.chatapplication.webRTC.RTCActivity
 import com.example.chatapplication.webRTC.RTCActivity.Companion.callerId
@@ -231,7 +239,7 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
             }
         }
 
-//        MY_ID = android.os.Build.MODEL;
+//        MY_ID = "968";
         database = ChatDatabase.getDatabase(this)
         groupDatabase = GroupDatabase.getDatabase(this)
         channelDatabase = ChannelDatabase.getDatabase(this)
@@ -286,30 +294,32 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
 
         GlobalScope.launch {
 
-//            database.senderDao().insertNewSender(Sender(0,"UK3d","email#", 0))
+//            database.senderDao().insertNewSender(Sender(0,"Emulator","Android SDK built for x86", 0))
 //            database.senderDao().insertNewSender(Sender(0,"AK47","email896", 0))
-//
-//            database.messageDao().insertMessage(Message("2345ff","email#","text","hello",1,2,2))
-//
+////
+//            database.messageDao().insertMessage(Message("2345ff","Android SDK built for x86","text","hello",1,2,2))
+////
 //            groupDatabase.groupDao().insertNewGroup(Group(0,"group2","grp1",0))
 //            groupDatabase.groupDao()  .insertNewGroup(Group(0,"Group Name2", "grp2", 2))
 //            groupDatabase.groupDao()  .insertNewGroup(Group(0,"Group Name3", "grp3", 2))
-//
+////
 //            groupDatabase.groupMemberDao().insertNewMember(GroupMember(0,"01","Harsh 1","grp1",0))
 //            groupDatabase.groupMemberDao().insertNewMember(GroupMember(0,"001","Harsh 2","grp2",0))
 //            groupDatabase.groupMemberDao().insertNewMember(GroupMember(0,"011","Harsh2","grp1",0))
 //            groupDatabase.groupMemberDao().insertNewMember(GroupMember(0,"012","Harsh3","grp1",0))
-//
+////
 //            groupDatabase.groupMessageDao().insertMessage(GroupMessage("0001","01","text","msg",1,1,1,"grp1"))
 //            groupDatabase.groupMessageDao().insertMessage(GroupMessage("00011","01","text","msg",1,2,2,"grp2"))
 //            groupDatabase.groupMessageDao().insertMessage(GroupMessage("00012","011","text","msg2",1,3,3,"grp1"))
 //            groupDatabase.groupMessageDao().insertMessage(GroupMessage("00014","01","text","msg4",1,5,3,"grp1"))
-//
-//
-//            channelDatabase.channelsDao().addNewChannel(Channels(0,"channel 1","011",0,"This is Description of group",100))
+////
+////
+//            channelDatabase.channelsDao().addNewChannel(Channels(0,"channel 1","011",0,"This is Description of group",100,1,System.currentTimeMillis(),"Education"))
+//            channelDatabase.channelsDao().addNewChannel(Channels(0,"My channel name","0117",0,"This is Description of my channel",100,0,System.currentTimeMillis(),"Other"))
 //            channelDatabase.channelMsgDao().insertMessage(ChannelMessage("00014","011","text","msg4",1))
 //            channelDatabase.channelMsgDao().insertMessage(ChannelMessage("00015","011","text","msg1",2))
 
+            messageListener(baseContext)
         }
 
         val permission = Manifest.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION
@@ -334,7 +344,7 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
         }
 
         CoroutineScope(Dispatchers.IO).launch {
-            getNewMessageFirestore("968", database, baseContext)
+            getNewMessageFirestore(MY_ID, database, baseContext)
             resetNotificationSharedPref()
             requestStoragePermission()
             createNotificationChannel(this@MainActivity)
@@ -483,6 +493,24 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
 
     }
 
+    private object RippleCustomTheme : RippleTheme {
+        @Composable
+        override fun defaultColor() = Color.Blue
+
+        @Composable
+        override fun rippleAlpha(): RippleAlpha = RippleAlpha(0.0f,0.0f,0.0f,0.0f)
+    }
+
+
+     object ButtonRippleTheme : RippleTheme {
+        @Composable
+        override fun defaultColor() = colorResource(id = R.color.primary)
+
+        @Composable
+        override fun rippleAlpha(): RippleAlpha = RippleAlpha(0.2f,0.2f,0.2f,0.2f,)
+    }
+
+
     private fun connectFCM() {
 //        FirebaseMessaging.getInstance().token.addOnCompleteListener(OnCompleteListener { task ->
 //            if (!task.isSuccessful) {
@@ -497,11 +525,6 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
 //        })
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-//        okHttpClient.dispatcher.executorService.shutdown()
-    }
-
 
     @Composable
     fun BottomNavigationBar(navController: NavController) {
@@ -513,61 +536,67 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
         ) {
             val navBackStackEntry by navController.currentBackStackEntryAsState()
             val currentRoute = navBackStackEntry?.destination?.route
-            val transition = updateTransition(navBackStackEntry)
 
             getBottomNavItems().forEach { item ->
+                var icon = if(item.route == ("home")) ImageVector.vectorResource(R.drawable.person) else if(item.route == "group") ImageVector.vectorResource(R.drawable.group_) else ImageVector.vectorResource(R.drawable.community)
+//                CompositionLocalProvider(LocalRippleTheme provides RippleCustomTheme) {
+                    BottomNavigationItem(
+                        selected = currentRoute == item.route,
+                        onClick = {
+                            navController.navigate(item.route) {
+                                popUpTo(navController.graph.startDestinationId)
+                                launchSingleTop = true
+                            }
+                        },
+                        icon = {
+                            if (currentRoute == item.route) {
+                                Card(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(colorResource(id = R.color.primary).copy(0.2f)),
 
-                BottomNavigationItem(
-                    selected = currentRoute == item.route,
-                    onClick = {
-                        navController.navigate(item.route) {
-                            popUpTo(navController.graph.startDestinationId)
-                            launchSingleTop = true
-                        }
-                    },
-                    icon = {
-                        if (currentRoute == item.route) {
-                            Card(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(colorResource(id = R.color.primary).copy(0.2f)),
-
-                                shape = RoundedCornerShape(8.dp),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = colorResource(id = R.color.primary).copy(
-                                        0.2f
+                                    shape = RoundedCornerShape(8.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = colorResource(id = R.color.primary).copy(
+                                            0.2f
+                                        )
                                     )
-                                )
-                            ) {
+                                ) {
+                                    Icon(
+                                        icon,
+                                        contentDescription = null,
+                                        tint = colorResource(id = R.color.primary),
+                                        modifier = Modifier
+                                            .padding(
+                                                top = 5.dp,
+                                                bottom = 5.dp,
+                                                start = 11.dp,
+                                                end = 11.dp
+                                            )
+                                            .size(26.dp)
+
+                                    )
+                                }
+                            } else {
                                 Icon(
-                                    item.icon,
+                                    icon,
                                     contentDescription = null,
-                                    tint = colorResource(id = R.color.primary),
-                                    modifier = Modifier.padding(
-                                        top = 5.dp,
-                                        bottom = 5.dp,
-                                        start = 11.dp,
-                                        end = 11.dp
-                                    )
+                                    tint = colorResource(id = R.color.unselected_bottom_item),
+                                    modifier = Modifier.size(24.dp)
                                 )
                             }
-                        } else {
-                            Icon(
-                                item.icon,
-                                contentDescription = null,
-                                tint = colorResource(id = R.color.unselected_bottom_item),
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
 
-                    },
-                    modifier = Modifier.padding(4.dp),
+                        },
+                        modifier = Modifier.padding(4.dp),
 
-                    )
+                        )
+//                }
             }
         }
 
     }
+
+
 
     @Composable
     fun NavigationHost(navController: NavHostController, context: Context) {
@@ -651,8 +680,8 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
                     selectedSenders.forEach() {
                         list.add(it.email)
                     }
-                    list.add("968") // add my id TODO current user id
-                    var data = CreateGroupData(it, list, "968")  //TODO  user id
+                    list.add(MY_ID)
+                    var data = CreateGroupData(it, list, MY_ID)
 
                     val apiService = RetrofitBuilder.create()
                     apiService.create_group(data).enqueue((object : retrofit2.Callback<GroupId> {

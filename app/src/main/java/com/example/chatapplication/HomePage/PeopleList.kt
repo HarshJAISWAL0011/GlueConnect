@@ -33,6 +33,7 @@ import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.TextFieldDefaults
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.KeyboardArrowLeft
+import androidx.compose.material.ripple.LocalRippleTheme
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -42,6 +43,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -74,6 +76,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.Constants.MESSAGE_TYPE_AUDIO
 import com.example.Constants.MESSAGE_TYPE_IMAGE
+import com.example.Constants.MY_ID
 import com.example.chatapplication.R
 import com.example.chatapplication.R.drawable.profile_placeholder
 import com.example.chatapplication.R.drawable.search
@@ -86,12 +89,14 @@ import com.example.chatapplication.db.Sender
 import com.example.chatapplication.firebase.FirestoreDb
 import com.example.retrofit.RetrofitBuilder
 import com.example.util.ChannelData
+import com.example.util.ChannelsWithMessage
 import com.example.util.SendersWithLastMessage
 import com.example.util.util.formatTime
 import com.google.ai.client.generativeai.type.content
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -113,74 +118,131 @@ private val fontStyleContent= TextStyle(
 
 @Composable
 fun ChannelList(viewModel: ChannelViewModel, context: Context){
-    val channelList = viewModel.channelListState.collectAsState()
+    val allChannels = viewModel.channelListState.collectAsState()
+    var joinedPublicChannels = allChannels.value.filter {
+        it.isAdmin == 0
+    }
+    var myChannels = allChannels.value.filter { it->
+        it.isAdmin == 1
+    }
+    var channelList by remember { mutableStateOf(mutableStateListOf<ChannelsWithMessage>()) }
+
+    var channelType by remember {
+        mutableStateOf("Public Channels")
+    }
+    LaunchedEffect(allChannels) {
+        withContext(Dispatchers.Main) {
+            channelList.clear()
+            channelList.addAll(joinedPublicChannels)
+            channelType = "Public Channels"
+        }
+    }
+
     var showSearchBox by remember { mutableStateOf(false) }
+    var showMyChannel by remember { mutableStateOf(false) }
 
 
 
     val intent = Intent(context, ChatActivity::class.java)
-    println("storing channelList size = ${channelList.value.size}")
 
     Surface(modifier = Modifier.background(colorResource(id = R.color.background))) {
-        if (showSearchBox)
-            SearchBox( { showSearchBox = !showSearchBox },context)
-        else {
-            Column(modifier = Modifier
-                .fillMaxSize()
-                .background(color = colorResource(id = R.color.background))) {
-
-
-            Row(horizontalArrangement = Arrangement.End,
-                modifier = Modifier.fillMaxWidth()) {
-                Text(text ="Public Channels" , style = fontStyleHeading, fontSize = 17.sp,
+        CompositionLocalProvider(LocalRippleTheme provides MainActivity.ButtonRippleTheme) {
+            if (showSearchBox)
+                SearchBox({ showSearchBox = !showSearchBox }, context)
+            else {
+                Column(
                     modifier = Modifier
-                        .weight(1f)
-                        .align(Alignment.CenterVertically),
-                    textAlign = TextAlign.Center,
-                    color = Color.Gray
-                )
-                IconButton(onClick = { showSearchBox = !showSearchBox
-               }) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.search_thick),
-                        contentDescription = "",
-                        modifier = Modifier
-                            .padding(end = 15.dp)
-                            .size(25.dp),
-                        tint = colorResource(id = R.color.primary).copy(0.7f)
-                    )
-                }
-            }
-
-            LazyColumn(modifier = Modifier.background(color = colorResource(id = R.color.background))) {
-                items(channelList.value) { it ->
-
-                    var details = SendersWithLastMessage(
-                        it.id,
-                        it.name,
-                        it.channelId,
-                        it.messageType,
-                        it.newMessageCount,
-                        it.last_message,
-                        it.receiveTime
-                    )
-                    ChatItem(details, "") {
-
-                        intent.putExtra("id", it.channelId)
-                        intent.putExtra("type", "channel")
-                        intent.putExtra("displayName", it.name)
+                        .fillMaxSize()
+                        .background(color = colorResource(id = R.color.background))
+                ) {
 
 
-                        if (it.newMessageCount!! > 0)
-                            viewModel.resetMessageCount(it)
+                    Row(
+                        horizontalArrangement = Arrangement.End,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
 
-                        context.startActivity(intent)
+                        IconButton(
+                            onClick = {
+                            }, modifier = Modifier.padding(start = 20.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.arrow_change),
+                                contentDescription = "",
+                                modifier = Modifier
+                                    .clickable {
+                                        showMyChannel = !showMyChannel
+                                        if (showMyChannel) {
+                                            channelList.clear()
+                                            channelList.addAll(myChannels)
+                                            channelType= "Channel Created"
+                                        } else {
+                                            channelList.clear()
+                                            channelList.addAll(joinedPublicChannels)
+                                            channelType = "Public Channels"
+                                        }
+                                    }
+                                    .padding(5.dp)
+                                    .size(25.dp),
+                                tint = colorResource(id = R.color.primary).copy(0.7f)
+                            )
+                        }
+
+                        Text(
+                            text = channelType, style = fontStyleHeading, fontSize = 17.sp,
+                            modifier = Modifier
+                                .weight(1f)
+                                .align(Alignment.CenterVertically),
+                            textAlign = TextAlign.Center,
+                            color = Color.Gray
+                        )
+                        IconButton(onClick = {
+                            showSearchBox = !showSearchBox
+                        }) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.search_thick),
+                                contentDescription = "",
+                                modifier = Modifier
+                                    .padding(end = 15.dp)
+                                    .size(25.dp),
+                                tint = colorResource(id = R.color.primary).copy(0.7f)
+                            )
+                        }
+                    }
+
+                    LazyColumn(modifier = Modifier.background(color = colorResource(id = R.color.background))) {
+                        items(channelList) { it ->
+
+                            var details = SendersWithLastMessage(
+                                it.id,
+                                it.name,
+                                it.channelId,
+                                it.messageType,
+                                it.newMessageCount,
+                                it.last_message,
+                                it.receiveTime
+                            )
+                            ChatItem(details, "") {
+
+                                intent.putExtra("id", it.channelId)
+                                if(showMyChannel)
+                                    intent.putExtra("type", "my_channel")
+                                else
+                                    intent.putExtra("type", "joined_channel")
+                                intent.putExtra("displayName", it.name)
+
+
+                                if (it.newMessageCount > 0)
+                                    viewModel.resetMessageCount(it)
+
+                                context.startActivity(intent)
+                            }
+                        }
                     }
                 }
             }
         }
     }
-}
 }
 
 @Composable
@@ -584,7 +646,7 @@ fun SearchBox( backPressed: ()->Unit,context:Context ){
     LaunchedEffect(Unit) {
         CoroutineScope(Dispatchers.IO).launch {
 
-            var list = FirestoreDb.getChannelList("96", "")
+            var list = FirestoreDb.getChannelList(MY_ID, "")
             searchChannelList.clear()
             searchChannelList.addAll(list)
 
@@ -621,7 +683,7 @@ fun SearchBox( backPressed: ()->Unit,context:Context ){
                 onValueChange = { text = it
                     CoroutineScope(Dispatchers.IO).launch {
 
-                        var list = FirestoreDb.getChannelList("96", it.text.toString())
+                        var list = FirestoreDb.getChannelList(MY_ID, it.text.toString())
                                  searchChannelList.clear()
                         println("inside ${list.size}")
                                  searchChannelList.addAll(list)
@@ -658,7 +720,7 @@ fun SearchBox( backPressed: ()->Unit,context:Context ){
                     ChannelItem(name = it.name , followers =it.followers.toString() ) {
                         val intent = Intent(context, ChatActivity::class.java)
                         intent.putExtra("id",it.channelId)
-                        intent.putExtra("type","search_channel")
+                        intent.putExtra("type","public_channel")
                         intent.putExtra("displayName",it.name)
                         context.startActivity(intent)
                 }

@@ -5,12 +5,15 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.vectorResource
+import com.example.chatapplication.R
 
 
-sealed class BottomNavItem(val route: String, val icon: ImageVector, val label: String) {
-    object Home : BottomNavItem("home", Icons.Default.Person, "Home")
-    object Group : BottomNavItem("group", Icons.Default.Favorite, "Group")
-    object Channel : BottomNavItem("channel", Icons.Default.Search, "Channel")
+sealed class BottomNavItem(val route: String,  val label: String) {
+    object Home : BottomNavItem("home", "Home")
+    object Group : BottomNavItem("group",  "Group")
+    object Channel : BottomNavItem("channel",  "Channel")
 }
 
 fun getBottomNavItems(): List<BottomNavItem> {

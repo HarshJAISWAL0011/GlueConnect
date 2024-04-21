@@ -97,6 +97,8 @@ class RTCClient(
         localAudioTrack = peerConnectionFactory.createAudioTrack(LOCAL_TRACK_ID + "_audio", audioSource);
         localStream?.addTrack(localAudioTrack)
 
+        Log.e(TAGGER, "isVideoCall $isVideoCall")
+
             if(isVideoCall) {
                 (videoCapturer as VideoCapturer).initialize(
                     surfaceTextureHelper,
@@ -136,6 +138,7 @@ class RTCClient(
                             .set(offer as Map<String, Any>, SetOptions.merge())
                             .addOnSuccessListener {
                                 Log.e(TAG, "DocumentSnapshot added")
+//                                isCallStarted = true
                             }
                             .addOnFailureListener { e ->
                                 Log.e(TAG, "Error adding document", e)
@@ -243,6 +246,8 @@ class RTCClient(
     }
 
     fun endCall() {
+        try {
+
         localStream?.removeTrack(localAudioTrack)
         localStream?.removeTrack(localVideoTrack)
 
@@ -262,6 +267,12 @@ class RTCClient(
         localStream?.dispose()
         isCallStarted = false
 
+        }catch (e: NullPointerException){
+            Log.d(TAG, "error in end call = $e")
+        }
+        catch (e: IllegalStateException){
+            Log.d(TAG, "error in end call = $e")
+        }
 
 
      }

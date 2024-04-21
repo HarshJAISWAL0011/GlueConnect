@@ -16,7 +16,9 @@ data class Channels(
     var newMessageCount: Int,
     var description:String,
     var followers: Int,
-//    var isAdmin: Int
+    var isAdmin: Int,
+    var creationDate: Long,
+    var channelType: String
 )
 
 @Entity(tableName = "channel_message",foreignKeys = [
@@ -31,4 +33,5 @@ data class ChannelMessage(
     val messageType: String?="text",
     var message: String,
     val receiveTime: Long = 0,
+    val sentTime: Long = 0,
 )

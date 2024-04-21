@@ -66,11 +66,13 @@ class SignalingClient(
                 .document(MY_ID)
                 .addSnapshotListener { snapshot, e ->
 
+//                    Log.d(TAGGER, "$snapshot")
                     if (e != null) {
                         Log.w(TAG, "listen:error", e)
+                        Log.w(TAG, "Snapshot was null")
                         return@addSnapshotListener
                     }
-
+                    Log.d(TAGGER, "${snapshot?.data}")
                     if (snapshot != null && snapshot.exists()) {
                         val data = snapshot.data ?: return@addSnapshotListener
 
@@ -79,9 +81,10 @@ class SignalingClient(
                         var timestamp = data.get("timestamp") as Long
                         val currentTimeMillis = System.currentTimeMillis()
                         val differenceMillis = currentTimeMillis - timestamp
+                        Log.d(TAG, "differenceMillis $differenceMillis currentTimeMillis $currentTimeMillis timestamp $timestamp")
 
-                        if (data.containsKey("status") &&
-                            data.getValue("status").toString() == END_CALL &&
+                        if (data.containsKey("type") &&
+                            data.getValue("type").toString() == END_CALL &&
                             RTCClient.isCallStarted
                         ) {
                             listener.onCallEnded()
@@ -145,7 +148,10 @@ class SignalingClient(
                         val currentTimeMillis = System.currentTimeMillis()
                         val differenceMillis = currentTimeMillis - timestamp
 
-                        if(differenceMillis > 10 *1000) return@addSnapshotListener
+                        Log.d(TAG, "for iceCandidate differenceMillis $differenceMillis currentTimeMillis $currentTimeMillis timestamp $timestamp")
+
+
+                        if(differenceMillis > 10 *1000 ) return@addSnapshotListener
                                 Log.e(TAGGER, "IceCandidate received")
 
                                 listener.onIceCandidateReceived(
@@ -153,32 +159,9 @@ class SignalingClient(
                                         Math.toIntExact(data["sdpMLineIndex"] as Long),
                                         data["sdpCandidate"].toString()))
                             }
-//                            if (SDPtype == "Answer" && data.containsKey("type") && data.get("type")=="answerCandidate") {
-//                                Log.e(Constants.TAGGER, "IceCandidate received")
-//                                listener.onIceCandidateReceived(
-//                                    IceCandidate(data["sdpMid"].toString(),
-//                                        Math.toIntExact(data["sdpMLineIndex"] as Long),
-//                                        data["sdpCandidate"].toString()))
-//
-//                        }
+
 
                 }
-//            db.collection("calls").document(meetingID)
-//                    .get()
-//                    .addOnSuccessListener { result ->
-//                        val data = result.data
-//                        if (data?.containsKey("type")!! && data.getValue("type").toString() == "OFFER") {
-//                            Log.e(TAG, "connect: OFFER - $data")
-//                            listener.onOfferReceived(SessionDescription(SessionDescription.Type.OFFER,data["sdp"].toString()))
-//                        } else if (data?.containsKey("type") && data.getValue("type").toString() == "ANSWER") {
-//                            Log.e(TAG, "connect: ANSWER - $data")
-//                            listener.onAnswerReceived(SessionDescription(SessionDescription.Type.ANSWER,data["sdp"].toString()))
-//                        }
-//                    }
-//                    .addOnFailureListener {
-//                        Log.e(TAG, "connect: $it")
-//                    }
-
         } catch (exception: Exception) {
             Log.e(TAGGER, "connectException: $exception")
 
@@ -191,6 +174,7 @@ class SignalingClient(
             isJoin -> callerId
             else -> calleeId
         }
+        Log.e(TAGGER, "sending iceCandidate to: $toId")
         val candidateConstant = hashMapOf(
             "serverUrl" to candidate?.serverUrl,
             "sdpMid" to candidate?.sdpMid,
@@ -202,7 +186,7 @@ class SignalingClient(
             .document(toId).collection("calls").document("IceCandidate")
             .set(candidateConstant as Map<String, Any>)
             .addOnSuccessListener {
-                Log.e(TAG, "sendIceCandidate: Success" )
+//                Log.e(TAG, "sendIceCandidate: Success" )
             }
             .addOnFailureListener {
                 Log.e(TAG, "sendIceCandidate: Error $it" )

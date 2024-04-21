@@ -87,11 +87,7 @@ class RTCActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_call)
-//        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
-//            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-//            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-//        }
-            
+
             audio_output_button = findViewById(R.id.audio_output_button)
             video_button = findViewById(R.id.video_button)
             switch_camera_button = findViewById(R.id.switch_camera_button)
@@ -152,16 +148,22 @@ class RTCActivity : AppCompatActivity() {
             }
             
             end_call_button.setOnClickListener {
+                GlobalScope.launch {
+
+                    Firebase.firestore.collection("users").document(callerId).update(
+                        hashMapOf("type" to Constants.END_CALL,
+                            "sdp" to "") as Map<String, Any>
+                    )
+                    Firebase.firestore.collection("users").document(calleeId).update(
+                        hashMapOf("type" to Constants.END_CALL,
+                            "sdp" to "") as Map<String, Any>
+                    )
+                }
                 rtcClient.endCall()
                 remote_view.isGone = false
                 remote_view.release()
                 local_view.release()
-                GlobalScope.launch {
-                    val target = if(isJoin) callerId else calleeId
-                    Firebase.firestore.collection("users").document(target).update(
-                        hashMapOf("status" to Constants.END_CALL) as Map<String, Any>
-                    )
-                }
+
                  finish()
                 startActivity(Intent(this@RTCActivity, MainActivity::class.java))
             }
@@ -191,8 +193,12 @@ class RTCActivity : AppCompatActivity() {
 
                     override fun onAddStream(p0: MediaStream?) {
                         super.onAddStream(p0)
+                        try{
                         Log.e(TAG, "onAddStream: $p0")
                         p0?.videoTracks?.get(0)?.addSink(remote_view)
+                    }catch (e:Exception){
+                        e.printStackTrace()
+                    }
                     }
 
                     override fun onIceConnectionChange(p0: PeerConnection.IceConnectionState?) {
@@ -247,7 +253,8 @@ class RTCActivity : AppCompatActivity() {
 
             override fun onAnswerReceived(description: SessionDescription) {
                 rtcClient.onRemoteSessionReceived(description)
-                 remote_view_loading.isGone = true
+                remote_view_loading.isGone = true
+                isCallStarted = true
                 Log.d(TAGGER," answer received")
             }
 
@@ -257,6 +264,7 @@ class RTCActivity : AppCompatActivity() {
 
             override fun onCallEnded() {
                  rtcClient.endCall()
+                isCallStarted =false
                 finish()
                 startActivity(Intent(this@RTCActivity, MainActivity::class.java))
 

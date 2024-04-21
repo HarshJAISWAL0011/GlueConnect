@@ -8,6 +8,7 @@ import androidx.room.Update
 import com.example.chatapplication.db.Sender
 import com.example.util.GroupSendersWithMessage
 import com.example.util.SendersWithLastMessage
+import com.example.util.TimeWithId
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -21,6 +22,12 @@ interface GroupDao {
 
     @Delete
     suspend  fun deleteGroup(group: Group)
+
+    @Query("SELECT groups.groupId AS id, COALESCE(MAX(group_message.receiveTime), 0) AS receiveTime " +
+            "FROM groups " +
+            "LEFT JOIN group_message ON groups.groupId = group_message.groupId " +
+            "GROUP BY groups.groupId")
+    fun getGroupIds( ): List<TimeWithId>?
 
     @Query("Select * from groups WHERE groupId =:groupId")
     fun getGroupFromId(groupId: String): Group?

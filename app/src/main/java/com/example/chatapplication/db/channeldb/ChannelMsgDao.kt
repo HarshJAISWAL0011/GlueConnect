@@ -6,6 +6,7 @@ import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
 import com.example.chatapplication.db.Message
+import com.example.util.TimeWithId
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -17,6 +18,13 @@ interface ChannelMsgDao {
 
         @Update
         suspend fun insertOrUpdate(msg: ChannelMessage)
+
+        @Query("SELECT channels.channelId AS id, COALESCE(MAX(channel_message.receiveTime), 0) AS receiveTime " +
+                "FROM channels " +
+                "LEFT JOIN channel_message ON channels.channelId = channel_message.channelId " +
+                "WHERE channels.isAdmin = 0 "+
+                "GROUP BY channels.channelId")
+        fun getChannelsIds( ): List<TimeWithId>?
 
         @Query("Select * from channel_message WHERE messageId = :id")
         suspend fun getMessageFromID(id: String): ChannelMessage?
