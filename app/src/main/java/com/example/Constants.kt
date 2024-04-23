@@ -53,8 +53,17 @@ object Constants {
    const val IN_CALL = "IN_CALL"
    const val FIRESTORE_REGISTRATION_TOKEN ="token"
    const val EXT_DIR_IMAGE_LOCATION ="/Chat/Images"
-   const val EXT_DIR_PROFILE_LOCATION ="/Chat/profile"
+   const val EXT_DIR_IMAGE_CHANNEL_LOCATION ="/Chat/Images/Channel"
+    const val EXT_DIR_PROFILE_LOCATION ="/Chat/Profile"
    const val ChannelId ="channel_id"
+   const val channels_joined ="channels_joined"
+   const val channels_created ="channels_created"
+   const val groups_created ="groups_created"
+   const val groups_joined ="groups_joined"
+   const val group_joined ="group_joined"
+   const val group_created ="group_created"
    const val ChannelName ="channel_name"
+   const val PREF ="preference"
+
 }
 

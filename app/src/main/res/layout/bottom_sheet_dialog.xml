@@ -1,0 +1,108 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+
+    android:background="@color/transparent_color"
+
+    android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar">
+
+    <androidx.cardview.widget.CardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+       android:background="@drawable/bottomsheet_corner"
+        app:cardBackgroundColor="@color/background"
+        android:layout_marginTop="25.dp"
+        app:cardElevation="4dp"
+        app:cardCornerRadius="12dp"
+        >
+    <!-- Bottom Sheet Content -->
+    <LinearLayout
+        android:id="@+id/bottomSheetContent"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="20dp"
+        android:background="@color/background"
+        android:orientation="vertical"
+        android:layout_centerHorizontal="true">
+
+        <!-- Heading Text -->
+        <TextView
+            android:id="@+id/headingText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Name"
+            android:textColor="@android:color/black"
+            android:textSize="18sp"
+            android:fontFamily="@font/merriweather"
+            android:textStyle="bold"
+            android:paddingTop="0dp"
+
+             />
+
+        <!-- Outlined Text Field -->
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+             app:boxBackgroundColor="@color/background"
+              app:boxStrokeColor="@color/primary"
+
+            app:cursorColor="@color/primary"
+            >
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/outlinedTextField"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@android:color/black"
+                android:focusedSearchResultHighlightColor="@color/primary"
+                android:outlineSpotShadowColor="@color/primary"
+                android:textSize="18sp"
+                 android:inputType="text"
+                android:imeOptions="actionDone" />
+
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- Spacer -->
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="16dp" />
+
+        <!-- OK and Cancel Buttons -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="end">
+
+            <!-- Cancel Button -->
+            <TextView
+                android:id="@+id/cancelButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@color/background"
+                android:backgroundTint="@color/background"
+                android:text="Cancel"
+                android:elevation="0dp"
+                android:textColor="@color/primary"
+                android:padding="5dp"
+                android:textStyle="bold"
+                android:layout_marginEnd="13dp" />
+
+            <!-- OK Button -->
+            <Button
+                android:id="@+id/okButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="OK"
+                android:textColor="@android:color/white"
+                android:backgroundTint="@color/primary"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+    </LinearLayout>
+    </androidx.cardview.widget.CardView>
+</RelativeLayout>

@@ -62,7 +62,7 @@ object  Notification {
         saveListSharedPref(context,Constants.notif_users_pending,pendingTotalUser.toList())
         saveIntSharedPref(context, Constants.total_message_pending,pendingTotalMessage)
 
-        val pendingIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT)
+        val pendingIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE)
 
         var builder = NotificationCompat.Builder(context, context.getString(R.string.message_notification_channel_id))
             .setSmallIcon(R.mipmap.ic_launcher_round)
@@ -82,7 +82,7 @@ object  Notification {
             context,
             0,
             notificationIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
         )
 
         return test != null

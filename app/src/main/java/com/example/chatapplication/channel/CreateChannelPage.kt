@@ -85,7 +85,7 @@ import com.example.chatapplication.WebSocket.WebSocketClient
 import com.example.chatapplication.db.Message
 import com.example.chatapplication.db.channeldb.ChannelDatabase
 import com.example.chatapplication.db.channeldb.Channels
-import com.example.chatapplication.firebase.FirestoreDb.createGroup
+import com.example.chatapplication.firebase.FirestoreDb.createChannel
 import com.example.util.CreateChannelData
 import com.example.util.util
 import com.example.util.util.uploadFile
@@ -409,7 +409,7 @@ fun CreateChannelPage(database: ChannelDatabase, onDone: ()-> Unit) {
                                             options[selectedIndex],
                                             System.currentTimeMillis()
                                         )
-                                        createGroup(data).addOnCompleteListener {
+                                        createChannel(data).addOnCompleteListener {
                                             println(task)
                                             if (task.isSuccessful) {
                                                 CoroutineScope(Dispatchers.IO).launch {
@@ -471,8 +471,8 @@ Card(
     modifier = Modifier.padding(15.dp)
 ) {
     val fontf = FontFamily( Font(resId = R.font.slab, weight = FontWeight.Bold))
-    Text(text = "Note:\nThis is public channel. This channel is visible to all the users. All the message should follow Terms & condition",
-        modifier = Modifier.padding(start = 10.dp, end = 10.dp, top = 18.dp, bottom = 18.dp), color = Color.White,
+    Text(text = "Note:\nThis is public channel. Channels created here will be visible to all the users.Messages should follow message sending guidelines",
+        modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 20.dp), color = Color.White,
      fontFamily = fontf
     )
 

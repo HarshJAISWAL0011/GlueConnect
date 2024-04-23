@@ -962,6 +962,7 @@ fun showBottomSheet(onSend: (msg: Message) -> Unit, context: Context) {
             CoroutineScope(Dispatchers.IO).launch {
                 if (uri != null) {
                     val imgDir = File(Environment.getExternalStorageDirectory(), "/Chat/Images")
+                    imgDir.mkdirs()
                     val timeStamp: String =
                         SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
                     val fileName = "JPEG_${timeStamp}.jpeg"

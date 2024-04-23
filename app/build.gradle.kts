@@ -111,6 +111,9 @@ dependencies {
     implementation("com.airbnb.android:lottie-compose:6.0.1")
     implementation ("com.mesibo.api:webrtc:1.0.5")
     implementation( "androidx.constraintlayout:constraintlayout:2.1.4")
+    implementation("com.google.firebase:firebase-auth")
+    implementation ("com.github.mukeshsolanki.android-otpview-pinview:otpview-compose:3.1.0")
+    implementation("com.google.firebase:firebase-appcheck-playintegrity")
 
 
 

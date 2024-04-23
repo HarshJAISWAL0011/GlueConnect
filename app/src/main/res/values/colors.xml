@@ -11,5 +11,11 @@
     <color name="unselected_bottom_item">#BCC1D6</color>
     <color name="selected_chat_color">#86869EF7</color>
     <color name="dark_red">#D40000</color>
+    <color name="primary_related">#F74001EB</color>
     <color name="faded_black">#57000000</color>
+    <color name="transparent_color">#00000000</color>
+    <color name="gradient1">#002B6B</color>
+    <color name="gradient2">#050FC2</color>
+    <color name="gradient3">#1E4F84</color>
+
 </resources>

@@ -209,7 +209,8 @@ object WebSocketClient{
     }
 
     private fun createRequest(): Request {
-        val websocketURL ="ws://chat-websocker.onrender.com"
+        val websocketURL ="https://chat-websocket-64k2.onrender.com"
+//            "ws://chat-websocker.onrender.com"
 //            "wss://socketsbay.com/wss/v2/1/demo/"
 
         return Request.Builder()

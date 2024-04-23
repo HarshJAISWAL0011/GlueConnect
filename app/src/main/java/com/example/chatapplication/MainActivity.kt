@@ -5,7 +5,6 @@ import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
-import android.content.ContentValues.TAG
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -13,19 +12,15 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
 import android.widget.RemoteViews
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.updateTransition
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -34,36 +29,26 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.BottomNavigation
 import androidx.compose.material.BottomNavigationItem
-import androidx.compose.material.Button
 import androidx.compose.material.IconButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.ripple.LocalRippleTheme
 import androidx.compose.material.ripple.RippleAlpha
 import androidx.compose.material.ripple.RippleTheme
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -117,16 +102,14 @@ import com.example.chatapplication.WebSocket.WebSocketClient
 import com.example.chatapplication.channel.ChannelVMFactory
 import com.example.chatapplication.channel.ChannelViewModel
 import com.example.chatapplication.channel.CreateChannelActivity
-import com.example.chatapplication.db.Message
 import com.example.chatapplication.db.channeldb.ChannelDatabase
-import com.example.chatapplication.db.channeldb.ChannelMessage
-import com.example.chatapplication.db.channeldb.Channels
 import com.example.chatapplication.db.groupdb.Group
 import com.example.chatapplication.db.groupdb.GroupDatabase
 import com.example.chatapplication.db.groupdb.GroupMember
-import com.example.chatapplication.db.groupdb.GroupMessage
+import com.example.chatapplication.firebase.FirestoreDb.getInitialData
 import com.example.chatapplication.firebase.FirestoreDb.getNewMessageFirestore
 import com.example.chatapplication.firebase.Listeners.messageListener
+import com.example.chatapplication.profile.ProfileActivity
 import com.example.chatapplication.webRTC.IncomingCallListener
 import com.example.chatapplication.webRTC.RTCActivity
 import com.example.chatapplication.webRTC.RTCActivity.Companion.callerId
@@ -135,18 +118,12 @@ import com.example.retrofit.RetrofitBuilder
 import com.example.util.CreateGroupData
  import com.example.util.GroupId
 import com.example.util.Notification
-import com.example.util.SendersWithLastMessage
+import com.example.util.SharedPrefConstant.PREF_SETUP_DATA
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
-import com.google.android.gms.tasks.OnCompleteListener
-import com.google.firebase.messaging.FirebaseMessaging
-import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
 
 class MainActivity : ComponentActivity(), IncomingCallListener {
 
@@ -248,6 +225,13 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
         channelRepository = ChannelRepo(channelDatabase)
 
 
+        val sharedPref = getSharedPreferences(Constants.PREF, MODE_PRIVATE)
+        val firstTimeDataGot  = sharedPref.getBoolean(PREF_SETUP_DATA, false)
+        if(!firstTimeDataGot){
+
+        }
+
+
         val answerIntent = Intent(this, RTCActivity::class.java).apply {
             action = "ACTION_ANSWER_CALL"
             putExtra("callerId", callerId)
@@ -257,7 +241,7 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
             this,
             0,
             answerIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
         )
 
         val declineIntent = Intent(this, MainActivity::class.java).apply {
@@ -268,22 +252,8 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
             this,
             0,
             declineIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
         )
-
-        val notification = NotificationCompat.Builder(this, "incoming_call_channel_id")
-            .setContentTitle("Incoming Call")
-            .setContentText("John Doe is calling")
-            .setSmallIcon(R.drawable.ic_call)
-            .addAction(R.drawable.ic_call, "Answer", answerPendingIntent)
-            .addAction(R.drawable.ic_baseline_call_end_24, "Decline", declinePendingIntent)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setAutoCancel(true) // Close notification when clicked
-            .build()
-
-//        val notificationManager = NotificationManagerCompat.from(this)
-//        notificationManager.notify(1, notification)
-
 
 
 
@@ -320,6 +290,8 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
 //            channelDatabase.channelMsgDao().insertMessage(ChannelMessage("00015","011","text","msg1",2))
 
             messageListener(baseContext)
+            getInitialData(MY_ID, baseContext)
+
         }
 
         val permission = Manifest.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION
@@ -397,7 +369,7 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
             context,
             0,
             answerIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
         )
     }
 
@@ -410,7 +382,7 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
             context,
             0,
             declineIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
         )
     }
 
@@ -751,6 +723,10 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
                             .clip(RoundedCornerShape(20.dp))
                             .background(Color.Gray)
                             .align(Alignment.CenterVertically)
+                            .clickable {
+                                val intent = Intent(context, ProfileActivity::class.java)
+                                startActivity(intent)
+                            }
                     ) else {
                     IconButton(onClick = {
                         if (currentRoute == BottomNavItem.Group.route) {
@@ -797,7 +773,7 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
         context,
         0,
         answerIntent,
-        PendingIntent.FLAG_UPDATE_CURRENT
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
     )
 
     // Intent for "Decline" action
@@ -807,7 +783,7 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
         context,
         0,
         declineIntent,
-        PendingIntent.FLAG_UPDATE_CURRENT
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
     )
 
     // Build the notification with actions

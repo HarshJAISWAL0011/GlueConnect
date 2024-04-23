@@ -71,9 +71,13 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.ViewModelProvider
 import androidx.room.withTransaction
+import com.example.Constants
+import com.example.Constants.EXT_DIR_IMAGE_CHANNEL_LOCATION
 import com.example.Constants.INCOMING_AUDIO_CALL
 import com.example.Constants.INCOMING_VIDEO_CALL
+import com.example.Constants.MESSAGE_TYPE_IMAGE
 import com.example.Constants.MY_ID
+import com.example.Constants.channels_joined
 import com.example.chatapplication.GroupPage.GroupChatVMFactory
 import com.example.chatapplication.GroupPage.GroupChatViewModel
 import com.example.chatapplication.InfoPage.InfoActivity
@@ -100,13 +104,16 @@ import com.example.chatapplication.webRTC.RTCActivity
 import com.example.util.util
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.google.firebase.Firebase
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.firestore
+import com.google.firebase.firestore.ktx.firestore
 import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 class ChatActivity : ComponentActivity() {
 
@@ -378,6 +385,7 @@ class ChatActivity : ComponentActivity() {
                                                 )
                                                 util.sendChannelMessage(message)
 
+
                                             } else {
                                                 // add new Message
                                                 println("message id = ${it.messageId} \n ${it.toString()}")
@@ -396,7 +404,20 @@ class ChatActivity : ComponentActivity() {
                                                         System.currentTimeMillis()
                                                     )
                                                 )
-                                                util.sendChannelMessage(message)
+                                                if(message.messageType == MESSAGE_TYPE_IMAGE) {
+                                                    util.uploadFile(
+                                                        EXT_DIR_IMAGE_CHANNEL_LOCATION,
+                                                        message.message
+                                                    )
+                                                        .addOnCompleteListener { task ->
+                                                            val downloadUri = task.result
+                                                            message.message = downloadUri.toString()
+                                                            util.sendChannelMessage(message)
+
+                                                        }
+                                                }else{
+                                                    util.sendChannelMessage(message)
+                                                }
                                             }
 
 
@@ -414,6 +435,18 @@ class ChatActivity : ComponentActivity() {
                                             channelDatabase.channelsDao().addNewChannel(
                                                 it1
                                             )
+
+                                             val ref = Firebase.firestore.collection(Constants.path_users).document(MY_ID)
+                                             val alldocs = ref.get().await()
+
+                                            if(alldocs.contains(channels_joined)) {
+                                                val data =   listOf(id)
+                                                ref.update(channels_joined, FieldValue.arrayUnion(*data.toTypedArray()))
+                                            }else{
+                                                val hashData= hashMapOf(channels_joined to listOf(id) )
+                                                ref.set(hashData, SetOptions.merge())
+                                            }
+
                                         }
                                         finish()
                                     }

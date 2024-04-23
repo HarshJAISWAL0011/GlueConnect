@@ -3,11 +3,16 @@ package com.example.chatapplication.firebase
 import android.annotation.SuppressLint
 import android.content.Context
 import android.database.sqlite.SQLiteConstraintException
+import android.util.Log
 import androidx.room.withTransaction
 import com.example.Constants
 import com.example.Constants.FIRESTORE_MESSAGES
 import com.example.Constants.FIRESTORE_USERS
 import com.example.Constants.MESSAGE_TYPE_IMAGE
+import com.example.Constants.channels_created
+import com.example.Constants.channels_joined
+import com.example.Constants.groups_created
+import com.example.Constants.groups_joined
 import com.example.Constants.message
 import com.example.Constants.messageId
 import com.example.Constants.messageType
@@ -21,8 +26,12 @@ import com.example.chatapplication.db.ChatDatabase
 import com.example.chatapplication.db.Message
 import com.example.chatapplication.db.SQLFuntions
 import com.example.chatapplication.db.Sender
+import com.example.chatapplication.db.channeldb.ChannelDatabase
 import com.example.chatapplication.db.channeldb.ChannelMessage
 import com.example.chatapplication.db.channeldb.Channels
+import com.example.chatapplication.db.groupdb.Group
+import com.example.chatapplication.db.groupdb.GroupDatabase
+import com.example.chatapplication.db.groupdb.GroupMember
 import com.example.retrofit.RetrofitBuilder
 import com.example.util.ChannelData
 import com.example.util.CreateChannelData
@@ -33,10 +42,12 @@ import com.google.android.gms.tasks.Task
 import com.google.android.gms.tasks.TaskCompletionSource
 import com.google.android.gms.tasks.Tasks
 import com.google.firebase.firestore.DocumentSnapshot
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreSettings
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.SetOptions
+import com.google.firebase.firestore.firestore
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import com.google.gson.JsonObject
@@ -173,7 +184,7 @@ object  FirestoreDb {
         }))
     }
 
-    fun createGroup( data: CreateChannelData): Task<String> {
+     fun createChannel( data: CreateChannelData): Task<String> {
         val result =  TaskCompletionSource<String>()
         CoroutineScope(Dispatchers.IO).launch{
         val db = Firebase.firestore
@@ -183,24 +194,35 @@ object  FirestoreDb {
         db.collection(path_channels).document(id).set(data)
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
-                    val grpId= db.collection(path_users).document(data.creatorId)
-                        .collection(path_groups).document().id
-                    println(grpId)
 
-                    val groupData = mapOf(grpId to id)
+                    val ref = com.google.firebase.Firebase.firestore.collection(path_users).document(data.creatorId)
+                    CoroutineScope(Dispatchers.IO).launch {
+                        val alldocs = ref.get().await()
 
-                    db.collection(path_users).document(data.creatorId)
-                        .collection(path_groups)
-                        .document("created")
-                        .set(groupData,  SetOptions.merge())
-                        .addOnCompleteListener { innerTask ->
-                            if (innerTask.isSuccessful) {
-                                result.setResult(id) // Complete the CompletableFuture when both tasks are successful
-                            } else {
-                                result.setException(innerTask.exception!!)
-                                println("Exception ${innerTask.exception}")
-                            }
+                        if (alldocs.contains(channels_created)) {
+                            val data = listOf(id)
+                            ref.update(channels_joined, FieldValue.arrayUnion(*data.toTypedArray()))
+                                .addOnCompleteListener { innerTask ->
+                                    if (innerTask.isSuccessful) {
+                                        result.setResult(id) // Complete the CompletableFuture when both tasks are successful
+                                    } else {
+                                        result.setException(innerTask.exception!!)
+                                        println("Exception ${innerTask.exception}")
+                                    }
+                                }
+                        } else {
+                            val hashData = hashMapOf(channels_created to listOf(id))
+                            ref.set(hashData, SetOptions.merge())
+                                .addOnCompleteListener { innerTask ->
+                                    if (innerTask.isSuccessful) {
+                                        result.setResult(id) // Complete the CompletableFuture when both tasks are successful
+                                    } else {
+                                        result.setException(innerTask.exception!!)
+                                        println("Exception ${innerTask.exception}")
+                                    }
+                                }
                         }
+                    }
                 } else {
                     result.setException(task.exception!!)
                 }
@@ -263,6 +285,35 @@ object  FirestoreDb {
         }
     }
 
+    suspend fun getGroupFromId(id: String): Group?{
+        val db = FirebaseFirestore.getInstance()
+        val collectionRef = db.collection(path_groups).document(id)
+        try {
+            val querySnapshot = collectionRef.get().await()
+            val groupData = Group(0,querySnapshot.get("name").toString(),querySnapshot.id,0)
+
+            return groupData
+        }catch (e: Exception) {
+            println("Error fetching channel list: ${e.message}")
+            return null
+        }
+    }
+
+    suspend fun getGroupMemebersFromId(id: String): List<String>?{
+        val db = FirebaseFirestore.getInstance()
+        val collectionRef = db.collection(path_groups).document(id)
+        try {
+            val querySnapshot = collectionRef.get().await()
+            val groupData = querySnapshot.get( "groupMembers") as? List<String>
+
+            return groupData
+        }catch (e: Exception) {
+            println("Error fetching channel list: ${e.message}")
+            return emptyList()
+        }
+    }
+
+
     suspend fun getChannelChats(id:String,lastItem: DocumentSnapshot?):List< DocumentSnapshot>{
         val db = FirebaseFirestore.getInstance()
         var ref =if(lastItem != null)
@@ -283,4 +334,130 @@ object  FirestoreDb {
 
         return results
     }
+
+    suspend fun getInitialData(id: String, context: Context){
+        val db = Firebase.firestore
+       var ref = db.collection(path_users).document(id)
+
+        // add channels joioned
+        try {
+             val documentSnapshot = ref.get().await()
+            var channelList = if (documentSnapshot.exists()) {
+                val dataArray = documentSnapshot.get(channels_joined) as? List<String>
+                dataArray
+            } else {
+                null
+            }
+            channelList?.forEach {
+                try {
+               val channel = getChannelFromId(it)
+                if(channel != null)
+                ChannelDatabase.getDatabase(context).channelsDao().addNewChannel(channel)
+                }catch (e: SQLiteConstraintException){
+                    Log.e("FirestoreDb", "error occured ${e.printStackTrace()}")
+                }
+                println("channel data $it")
+            }
+            println("channel data $channelList")
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        // add channels created
+        try {
+            val documentSnapshot = ref.get().await()
+            var channelList = if (documentSnapshot.exists()) {
+                val dataArray = documentSnapshot.get(channels_created) as? List<String>
+                dataArray
+            } else {
+                null
+            }
+            channelList?.forEach {
+                try {
+                    val channel = getChannelFromId(it)?.copy(isAdmin = 1)
+                    if(channel != null)
+                        ChannelDatabase.getDatabase(context).channelsDao().addNewChannel(channel)
+                }catch (e: SQLiteConstraintException){
+                    Log.e("FirestoreDb", "error occured ${e.printStackTrace()}")
+                }
+                println("channel data $it")
+            }
+            println("channel data $channelList")
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        // add groups created
+        try {
+            val documentSnapshot = ref.get().await()
+            var groupList = if (documentSnapshot.exists()) {
+                val dataArray = documentSnapshot.get(groups_created) as? List<String>
+                dataArray
+            } else {
+                null
+            }
+            groupList?.forEach {
+                try {
+                    val group = getGroupFromId(it)
+                    if(group != null) {
+                        GroupDatabase.getDatabase(context).groupDao().insertNewGroup(group)
+                        val memberList = getGroupMemebersFromId(it)
+                        memberList?.forEach { memberId ->
+                            try {
+                            val member = GroupMember(0,it,memberId,it,1)
+                            GroupDatabase.getDatabase(context).groupMemberDao().insertNewMember(member)
+                            }catch (e: SQLiteConstraintException){
+                                Log.e("FirestoreDb", "error occured ${e.printStackTrace()}")
+                            }
+                        }
+                    }
+                }catch (e: SQLiteConstraintException){
+                    Log.e("FirestoreDb", "error occured ${e.printStackTrace()}")
+                }
+                println("channel data $it")
+            }
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        // add groups joined
+        try {
+            val documentSnapshot = ref.get().await()
+            var groupList = if (documentSnapshot.exists()) {
+                val dataArray = documentSnapshot.get(groups_joined) as? List<String>
+                dataArray
+            } else {
+                null
+            }
+            groupList?.forEach {
+                try {
+                    val group = getGroupFromId(it)
+                    if(group != null) {
+                        GroupDatabase.getDatabase(context).groupDao().insertNewGroup(group)
+                        val memberList = getGroupMemebersFromId(it)
+                        memberList?.forEach { memberId ->
+                            try {
+                                val member = GroupMember(0,it,memberId,it,0)
+                                GroupDatabase.getDatabase(context).groupMemberDao().insertNewMember(member)
+                            }catch (e: SQLiteConstraintException){
+                                Log.e("FirestoreDb", "error occured ${e.printStackTrace()}")
+                            }
+                        }
+                    }
+                }catch (e: SQLiteConstraintException){
+                    Log.e("FirestoreDb", "error occured ${e.printStackTrace()}")
+                }
+                println("channel data $it")
+            }
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+    }
+
+
 }

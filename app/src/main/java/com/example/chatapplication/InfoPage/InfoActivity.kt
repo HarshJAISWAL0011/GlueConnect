@@ -16,6 +16,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,6 +40,7 @@ import com.example.chatapplication.db.Sender
 import com.example.chatapplication.db.channeldb.ChannelDatabase
 import com.example.chatapplication.db.groupdb.GroupDatabase
 import com.example.chatapplication.db.groupdb.GroupMember
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -60,6 +62,16 @@ class InfoActivity : ComponentActivity() {
 
         setContent {
             ChatApplicationTheme {
+
+                val systemUiController = rememberSystemUiController()
+                val statusBarColor = colorResource(id = R.color.primary)
+
+                SideEffect {
+                    systemUiController.setSystemBarsColor(
+                        color = statusBarColor,
+                        darkIcons = false
+                    )
+                }
                 // A surface container using the 'background' color from the theme
                 val gradientColors = listOf(
                      colorResource(id = R.color.primary).copy(alpha = 0.4f),

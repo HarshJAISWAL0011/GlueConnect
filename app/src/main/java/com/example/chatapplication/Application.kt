@@ -3,6 +3,7 @@ package com.example.chatapplication
 import android.annotation.SuppressLint
 import android.app.Application
 import android.app.PendingIntent
+import android.app.PendingIntent.FLAG_MUTABLE
 import android.content.Context
 import android.content.Intent
 import android.os.Build
@@ -11,6 +12,7 @@ import android.os.Looper
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import com.example.Constants
 import com.example.Constants.INCOMING_AUDIO_CALL
 import com.example.Constants.INCOMING_VIDEO_CALL
 import com.example.Constants.MY_ID
@@ -26,8 +28,13 @@ class Application: Application() {
     override fun onCreate() {
         super.onCreate()
 
+        val sharedPref = getSharedPreferences(Constants.PREF, MODE_PRIVATE)
+        val userId = sharedPref.getString("userId","error");
+        if(userId?.isEmpty()?:true){
+          return
+        }
+        MY_ID = userId?:""
         listener = initListener()
-        MY_ID = Build.MODEL;
 
         val settings = FirebaseFirestoreSettings.Builder()
             .setPersistenceEnabled(false)
@@ -81,7 +88,7 @@ class Application: Application() {
                 context,
                 0,
                 answerIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT
+                PendingIntent.FLAG_UPDATE_CURRENT or FLAG_MUTABLE
             )
 
             val declineIntent = Intent(context, MainActivity::class.java).apply {
@@ -92,7 +99,7 @@ class Application: Application() {
                 context,
                 0,
                 declineIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT
+                PendingIntent.FLAG_UPDATE_CURRENT or FLAG_MUTABLE
             )
 
             val notification = NotificationCompat.Builder(context, "incoming_call_channel_id")
@@ -127,7 +134,7 @@ class Application: Application() {
                 context,
                 0,
                 answerIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT
+                PendingIntent.FLAG_UPDATE_CURRENT or FLAG_MUTABLE
             )
 
             val declineIntent = Intent(context, MainActivity::class.java).apply {
@@ -138,7 +145,7 @@ class Application: Application() {
                 context,
                 0,
                 declineIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT
+                PendingIntent.FLAG_UPDATE_CURRENT or FLAG_MUTABLE
             )
 
             val notification = NotificationCompat.Builder(context, "incoming_call_channel_id")

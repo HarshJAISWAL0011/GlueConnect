@@ -6,7 +6,8 @@ import retrofit2.converter.gson.GsonConverterFactory
 
 object RetrofitBuilder {
     lateinit var apiService: ApiService
-    val baseurl ="https://chat-websocker.onrender.com"
+    val baseurl ="https://chat-websocket-64k2.onrender.com"
+//        "https://chat-websocker.onrender.com"
 
     fun create():ApiService {
         runBlocking {
