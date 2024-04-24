@@ -4,12 +4,14 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.content.Intent.ACTION_OPEN_DOCUMENT
+import android.database.sqlite.SQLiteConstraintException
 import android.graphics.Bitmap
 import android.graphics.drawable.shapes.Shape
 import android.media.MediaPlayer
 import android.media.MediaRecorder
 import android.net.Uri
 import android.os.Environment
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -42,6 +44,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Button
+import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.IconButton
 import androidx.compose.material.LinearProgressIndicator
 import androidx.compose.material.ProgressIndicatorDefaults
@@ -110,10 +113,13 @@ import com.example.Constants.MY_ID
 import com.example.chatapplication.GroupPage.GroupChatViewModel
 import com.example.chatapplication.R
 import com.example.chatapplication.channel.ChannelChatViewModel
+import com.example.chatapplication.db.ChatDatabase
 import com.example.chatapplication.db.Message
 import com.example.chatapplication.db.channeldb.ChannelDatabase
 import com.example.chatapplication.db.channeldb.ChannelMessage
+import com.example.chatapplication.firebase.FirestoreDb
 import com.example.chatapplication.firebase.FirestoreDb.getChannelChats
+import com.example.chatapplication.firebase.FirestoreDb.getOlderChannelChats
 import com.example.util.util
 import com.example.util.util.getMinSecond
 import com.example.util.util.saveImageToExternalStorage
@@ -131,7 +137,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-
+private val TAG = "ChatScreen"
 lateinit var bottomSheetVisible:MutableState<Boolean>
 var userId: String = ""
 var audioLocation: File? = null
@@ -144,22 +150,23 @@ private var sender_group_id: String? = null
 fun PublicChannel(context2: Context, id: String, onJoinClicked: ()->Unit ){
 
     context = context2
-    var chatList  = remember {
-        mutableStateListOf<ChannelMessage>()
-    }
-    var lastMessage by remember {
-        mutableStateOf<DocumentSnapshot?>(null)
-    }
+    var chatList  = remember { mutableStateListOf<ChannelMessage>() }
+    var latestTime by remember{ mutableStateOf( System.currentTimeMillis())}
+    var isDataProcessing by remember{ mutableStateOf( false)}
 
     LaunchedEffect(Unit) {
         CoroutineScope(Dispatchers.IO).launch {
-            val snapShotList = getChannelChats(id, null)
+            isDataProcessing = true
+           val snapShotList = getOlderChannelChats(id, latestTime)
            var result = snapShotList.mapNotNull { document ->
-                 document.toObject(ChannelMessage::class.java)
-            }
-            if(snapShotList.size > 0)
-            lastMessage = snapShotList.get(snapShotList.size -1)
+               ChannelMessage(document["messageId"].toString(), document["channelId"].toString(), document["messageType"].toString(), document["message"].toString(),
+                   document["timestamp"].toString().toLong())
+             }
+            if(snapShotList.isNotEmpty())
+                latestTime = result[result.size-1].sentTime
+
             chatList.addAll(result)
+            isDataProcessing =false
         }
     }
     val listState = rememberLazyListState()
@@ -170,7 +177,9 @@ fun PublicChannel(context2: Context, id: String, onJoinClicked: ()->Unit ){
         color = colorResource(id = R.color.background),
 
         ) {
-        Column(modifier = Modifier.fillMaxHeight().padding(start = 8.dp, end = 8.dp,top=8.dp, bottom = 5.dp)) {
+        Column(modifier = Modifier
+            .fillMaxHeight()
+            .padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 5.dp)) {
             LazyColumn(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -179,7 +188,7 @@ fun PublicChannel(context2: Context, id: String, onJoinClicked: ()->Unit ){
             ) {
                 itemsIndexed(chatList) {idx,it->
 
-                    ChatBubble(Message(it.messageId,it.channelId,it.messageType,it.message,1,it.receiveTime),"", false, context,
+                    ChatBubble(Message(it.messageId,it.channelId,it.messageType,it.message,1,it.sentTime),"", false, context,
                         {
                             // onclick
 
@@ -187,15 +196,28 @@ fun PublicChannel(context2: Context, id: String, onJoinClicked: ()->Unit ){
                         // onLongClick
                     }
 
-                    LaunchedEffect(idx == chatList.size -5) {
-                         // pagination
-                        CoroutineScope(Dispatchers.IO).launch {
-                           val snapShotList = getChannelChats(MY_ID, lastMessage)
-                            var result = snapShotList.mapNotNull { document ->
-                                document.toObject(ChannelMessage::class.java)
+                    LaunchedEffect(idx == chatList.size -1  ) {
+                        // pagination
+                        if (!isDataProcessing) {
+                            isDataProcessing = true
+                            CoroutineScope(Dispatchers.IO).launch {
+                                val snapShotList = getOlderChannelChats(id, latestTime)
+                                var result = snapShotList.mapNotNull { document ->
+                                    ChannelMessage(
+                                        document["messageId"].toString(),
+                                        document["channelId"].toString(),
+                                        document["messageType"].toString(),
+                                        document["message"].toString(),
+                                        document["timestamp"].toString().toLong()
+                                    )
+                                }
+                                if (result.isNotEmpty()) {
+                                    latestTime = result[result.size - 1].sentTime
+                                    println("getChannelChats data updated $latestTime")
+                                }
+                                chatList.addAll(result)
+                                isDataProcessing = false
                             }
-                            lastMessage = snapShotList.get(snapShotList.size -1)
-                            chatList.addAll(result)
                         }
                     }
                 }
@@ -204,7 +226,12 @@ fun PublicChannel(context2: Context, id: String, onJoinClicked: ()->Unit ){
             Button(onClick = {
                 onJoinClicked()
             },
-                modifier = Modifier.fillMaxWidth().height(50.dp)) {
+                colors = ButtonDefaults.buttonColors(colorResource(id = R.color.primary)),
+                shape = RoundedCornerShape(15.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp)
+                    ) {
                 Text(text = "Join", color = Color.White)
             }
         }
@@ -218,8 +245,17 @@ fun JoinedChannelChats(
     context2: Context, viewModel: ChannelChatViewModel,id:String ){
     context = context2
     sender_group_id = viewModel.id
-    val chatList = viewModel.chatListState.collectAsState()
+    var chatList = viewModel.chatListState.collectAsState()
+    var list = remember { mutableStateListOf<ChannelMessage>() }
+    var latestTime = remember{System.currentTimeMillis()}
+    var dbHaveData by remember {
+        mutableStateOf(true)
+    }
     val listState = rememberLazyListState()
+    LaunchedEffect(Unit) {
+        list.addAll(chatList.value)
+        println("joined channel ${chatList.value}")
+    }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -238,17 +274,48 @@ fun JoinedChannelChats(
                     var bubbleSelected by remember {
                         mutableStateOf(false)
                     }
-                    val msg = Message(it.messageId,it.channelId,it.messageType,it.message,1,it.receiveTime)
+                    val msg = Message(it.messageId,it.channelId,it.messageType,it.message,1,it.sentTime)
                     ChatBubble(msg,"", bubbleSelected, context,
                         {// onclick
                         }){
                         // onLongClick
                     }
+                    LaunchedEffect(idx == chatList.value.size -1 ) { // pagination
 
-                    if(idx == chatList.value.size -5) { // pagination
-                        viewModel.loadOldMessage()
+                        CoroutineScope(Dispatchers.IO).launch {
+                            if (list.size > 0) {
+                                latestTime = list.get(list.size - 1).sentTime
+                            }
+
+                            list.clear()
+                            if(!dbHaveData) return@launch
+                            val oldMessage = viewModel.loadOldMessage()
+
+                            list.addAll(oldMessage)
+                            Log.d(TAG,"message list size from local DB = ${oldMessage.size}" )
+//                            println("joined channel 2nd last ${idx} &&& ${oldMessage.size}")
+                        }
+                    }
+
                     }
                 }
+            LaunchedEffect( list.size == 0 && dbHaveData) {
+                // get from db
+               val oldMessage = viewModel.loadOldMessageDB(latestTime)
+                if(oldMessage.isEmpty()) dbHaveData = false
+                list.addAll(oldMessage)
+
+                CoroutineScope(Dispatchers.IO).launch {
+                    oldMessage.forEach {
+                        try {
+                            ChannelDatabase.getDatabase(context).channelMsgDao().insertMessage(it)
+                        } catch (e: SQLiteConstraintException) {
+                            println("SQLiteConstraintException ${e.printStackTrace()}")
+                        }
+                    }
+                }
+                Log.d(TAG,"message list size from firestore = ${oldMessage.size}" )
+//                println("ChatScre ${oldMessage.size} && $dbHaveData")
             }
 
         }
@@ -292,7 +359,7 @@ fun MyChannels(
                     var bubbleSelected by remember {
                         mutableStateOf(false)
                     }
-                    val msg = Message(it.messageId,it.channelId,it.messageType,it.message,0,it.receiveTime)
+                    val msg = Message(it.messageId,it.channelId,it.messageType,it.message,0,it.sentTime)
                     ChatBubble(msg,"", bubbleSelected, context,
                         {
                             // onclick
@@ -313,7 +380,7 @@ fun MyChannels(
                         bubbleSelected = true
                     }
 
-                    if(idx == chatList.value.size -5) { // pagination
+                    LaunchedEffect(idx == chatList.value.size -5) { // pagination
                         viewModel.loadOldMessage()
                     }
                 }
@@ -542,7 +609,7 @@ fun sendMessageBox(defaultText:String,onSend: (msg: Message)->Unit){
                                     if (messageText.isNotEmpty()) {
                                         val time = System.currentTimeMillis()
                                         var msg = Message(
-                                            MY_ID+ time,
+                                            MY_ID + time,
                                             sender_group_id ?: "",
                                             "text",
                                             messageText,

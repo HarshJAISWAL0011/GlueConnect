@@ -28,16 +28,19 @@ interface  ChannelDao {
 //    @Query("Select * from sender WHERE EMAIL =:email")
 //    fun getSenderListener(email: String): Flow<Channels>
 
+    @Query("Select channelId from channels")
+    fun getAllChannelIds(): List<String>
+
     @Query("Select * from channels")
     fun getAllChannel(): Flow<List<Channels>>
 
-    @Query("SELECT channels.id, channels.name, channels.channelId, channels.newMessageCount,channels.isAdmin,latest_message.message AS last_message, latest_message.receiveTime, latest_message.messageType " +
+    @Query("SELECT channels.id, channels.name, channels.channelId, channels.newMessageCount,channels.isAdmin,latest_message.message AS last_message, latest_message.sentTime, latest_message.messageType " +
             "FROM channels " +
             "LEFT JOIN (" +
-            "    SELECT channelId, message, receiveTime, messageType " +
+            "    SELECT channelId, message, sentTime, messageType " +
             "    FROM channel_message AS m1 " +
-            "    WHERE receiveTime = (" +
-            "        SELECT MAX(receiveTime) " +
+            "    WHERE sentTime = (" +
+            "        SELECT MAX(sentTime) " +
             "        FROM channel_message AS m2 " +
             "        WHERE m1.channelId = m2.channelId" +
             "    )" +

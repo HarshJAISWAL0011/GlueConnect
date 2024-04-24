@@ -140,7 +140,7 @@ class ChatActivity : ComponentActivity() {
         type = intent.getStringExtra("type")
         displayName = intent.getStringExtra("displayName")
 
-//        println("all ids are $senderId $groupId $displayName $isGroup" )
+        println("all ids are $id  $displayName $type" )
 
         database = ChatDatabase.getDatabase(this)
         groupDatabase = GroupDatabase.getDatabase(this)
@@ -299,7 +299,8 @@ class ChatActivity : ComponentActivity() {
                                             defaultText.value = ""
                                         }
                                     })
-                            } else if (type == "individual") {
+                            }
+                            else if (type == "individual") {
                                 ChatsContentList(this, chatViewModel,id?:"", selectedMessageListSize.value,
                                     {
                                         // add in list on click
@@ -341,7 +342,8 @@ class ChatActivity : ComponentActivity() {
                                         }
                                     })
 
-                            } else if (type == "my_channel") {
+                            }
+                            else if (type == "my_channel") {
                                 MyChannels(this,
                                     channelViewModel,
                                     selectedMessageListSize.value,
@@ -427,7 +429,10 @@ class ChatActivity : ComponentActivity() {
                                             defaultText.value = ""
                                         }
                                     })
-                            } else if (type == "public_channel") {
+                            }
+                            else if (type == "public_channel") {
+                                println(" getChannelChats data =$id ")
+
                                 PublicChannel(this, id?:""){
                                     GlobalScope.launch {
                                         var channel = getChannelFromId(id ?: "")
@@ -451,7 +456,8 @@ class ChatActivity : ComponentActivity() {
                                         finish()
                                     }
                                 }
-                            } else if (type == "joined_channel") {
+                            }
+                            else if (type == "joined_channel") {
                                 JoinedChannelChats(this, channelViewModel,id?:"")
                             }
                         }

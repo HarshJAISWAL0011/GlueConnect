@@ -201,7 +201,7 @@ object  FirestoreDb {
 
                         if (alldocs.contains(channels_created)) {
                             val data = listOf(id)
-                            ref.update(channels_joined, FieldValue.arrayUnion(*data.toTypedArray()))
+                            ref.update(channels_created, FieldValue.arrayUnion(*data.toTypedArray()))
                                 .addOnCompleteListener { innerTask ->
                                     if (innerTask.isSuccessful) {
                                         result.setResult(id) // Complete the CompletableFuture when both tasks are successful
@@ -243,7 +243,7 @@ object  FirestoreDb {
         }
         db.collection(path_groups).document(message.getString("group_id")).collection(Constants.message).add(map)
     }
-    suspend fun getChannelList(id: String, searchText: String): List<ChannelData> {
+    suspend fun getChannelList( searchText: String, database: ChannelDatabase): List<ChannelData> {
         val db = FirebaseFirestore.getInstance()
         val collectionRef = db.collection(path_channels)
             .whereGreaterThanOrEqualTo("name", searchText)
@@ -253,11 +253,13 @@ object  FirestoreDb {
 
         try {
             val querySnapshot = collectionRef.get().await()
+            val storedChannelList = database.channelsDao().getAllChannelIds()
+            println(" stored list $storedChannelList")
 
             for (document in querySnapshot.documents) {
                 val channelData = document.toObject(ChannelData::class.java)
                 channelData?.channelId = document.id
-                if (channelData != null) {
+                if (channelData != null && !storedChannelList.contains(channelData.channelId)) {
                     dataList.add(channelData)
                 }
             }
@@ -313,24 +315,45 @@ object  FirestoreDb {
         }
     }
 
+    suspend fun getOlderChannelChats(id:String,latestTime: Long):List< DocumentSnapshot>{
+        println(" getChannelChats data =$id ")
+        val db = FirebaseFirestore.getInstance()
+        var ref =
+            db.collection(path_channels).document(id)
+                .collection("messages")
+                .whereLessThan("timestamp", latestTime)
+                .orderBy("timestamp", Query.Direction.DESCENDING)
+                .limit(5)
+
+
+        val snapshot = ref.get().await()
+
+
+
+        val results = snapshot.documents
+        println(" getChannelChats data result size =${results.size}  time $latestTime")
+        return results
+    }
+
 
     suspend fun getChannelChats(id:String,lastItem: DocumentSnapshot?):List< DocumentSnapshot>{
+        println(" getChannelChats data =$id ")
         val db = FirebaseFirestore.getInstance()
-        var ref =if(lastItem != null)
-            db.collection(path_groups).document(id)
-            .collection("messages")
-            .orderBy("time", Query.Direction.DESCENDING)
-            .limit(25)
-        else
-            db.collection(path_groups).document(id)
+        var ref =if(lastItem == null)
+            db.collection(path_channels).document(id)
                 .collection("messages")
-                .orderBy("time", Query.Direction.DESCENDING)
+                .orderBy("timestamp", Query.Direction.DESCENDING)
+                .limit(25)
+        else
+            db.collection(path_channels).document(id)
+                .collection("messages")
+                .orderBy("timestamp", Query.Direction.DESCENDING)
                 .startAfter(lastItem)
                 .limit(25)
 
         val snapshot = ref.get().await()
 
-         val results = snapshot.documents
+        val results = snapshot.documents
 
         return results
     }
@@ -352,7 +375,7 @@ object  FirestoreDb {
                 try {
                val channel = getChannelFromId(it)
                 if(channel != null)
-                ChannelDatabase.getDatabase(context).channelsDao().addNewChannel(channel)
+                 ChannelDatabase.getDatabase(context).channelsDao().addNewChannel(channel)
                 }catch (e: SQLiteConstraintException){
                     Log.e("FirestoreDb", "error occured ${e.printStackTrace()}")
                 }

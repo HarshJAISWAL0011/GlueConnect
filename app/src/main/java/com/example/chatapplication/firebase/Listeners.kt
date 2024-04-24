@@ -111,7 +111,6 @@ object Listeners {
                             changedData["channelId"].toString(),
                             changedData["messageType"].toString(),
                             changedData["message"].toString(),
-                            System.currentTimeMillis(),
                             changedData["timestamp"].toString()?.toLong()?: System.currentTimeMillis(),
                            )
 

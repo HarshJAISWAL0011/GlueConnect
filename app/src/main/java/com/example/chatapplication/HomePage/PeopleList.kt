@@ -86,6 +86,7 @@ import com.example.chatapplication.MainActivity
 import com.example.chatapplication.PeopleBook.PeopleViewModel
 import com.example.chatapplication.channel.ChannelViewModel
 import com.example.chatapplication.db.Sender
+import com.example.chatapplication.db.channeldb.ChannelDatabase
 import com.example.chatapplication.firebase.FirestoreDb
 import com.example.retrofit.RetrofitBuilder
 import com.example.util.ChannelData
@@ -220,7 +221,7 @@ fun ChannelList(viewModel: ChannelViewModel, context: Context){
                                 it.messageType,
                                 it.newMessageCount,
                                 it.last_message,
-                                it.receiveTime
+                                it.sentTime
                             )
                             ChatItem(details, "") {
 
@@ -314,7 +315,7 @@ fun ChatItem(sender: SendersWithLastMessage, lastMsgSender: String, onClick: ()-
         fontSize = 20.sp,
         color = colorResource(id = R.color.primary)
     )
-    val time = formatTime(sender.receiveTime)
+    val time = formatTime(sender.sentTime)
 
     Row (
         modifier = Modifier
@@ -646,7 +647,7 @@ fun SearchBox( backPressed: ()->Unit,context:Context ){
     LaunchedEffect(Unit) {
         CoroutineScope(Dispatchers.IO).launch {
 
-            var list = FirestoreDb.getChannelList(MY_ID, "")
+            var list = FirestoreDb.getChannelList( "", ChannelDatabase.getDatabase(context))
             searchChannelList.clear()
             searchChannelList.addAll(list)
 
@@ -683,7 +684,7 @@ fun SearchBox( backPressed: ()->Unit,context:Context ){
                 onValueChange = { text = it
                     CoroutineScope(Dispatchers.IO).launch {
 
-                        var list = FirestoreDb.getChannelList(MY_ID, it.text.toString())
+                        var list = FirestoreDb.getChannelList( it.text, ChannelDatabase.getDatabase(context))
                                  searchChannelList.clear()
                         println("inside ${list.size}")
                                  searchChannelList.addAll(list)
@@ -771,17 +772,12 @@ fun ChannelItem(name: String, followers: String, onClick: () -> Unit){ // indiv.
         }
 
         Spacer(modifier = Modifier.width(11.dp))
-
-
             IconButton(onClick = {
                 onClick()},
             ) {
                 Icon(Icons.Outlined.KeyboardArrowLeft, contentDescription = "", tint = colorResource(id = R.color.primary_variant),
                     modifier = Modifier.rotate(180.0f))
             }
-
-
-
 
     }
 }

@@ -19,7 +19,7 @@ interface ChannelMsgDao {
         @Update
         suspend fun insertOrUpdate(msg: ChannelMessage)
 
-        @Query("SELECT channels.channelId AS id, COALESCE(MAX(channel_message.receiveTime), 0) AS receiveTime " +
+        @Query("SELECT channels.channelId AS id, COALESCE(MAX(channel_message.sentTime), 0) AS receiveTime " +
                 "FROM channels " +
                 "LEFT JOIN channel_message ON channels.channelId = channel_message.channelId " +
                 "WHERE channels.isAdmin = 0 "+
@@ -29,13 +29,15 @@ interface ChannelMsgDao {
         @Query("Select * from channel_message WHERE messageId = :id")
         suspend fun getMessageFromID(id: String): ChannelMessage?
 
+        @Query("Delete  from channel_message WHERE channelId = :id")
+        suspend fun deleteAllMessageFrom(id: String)
         @Update
         suspend fun editMessage(msg: ChannelMessage)
 
         @Delete
         suspend  fun deleteMessage(msg: ChannelMessage)
 
-        @Query("Select * from channel_message WHERE channelId = :channelId ORDER BY receiveTime DESC LIMIT :pageSize OFFSET :offset")
+        @Query("Select * from channel_message WHERE channelId = :channelId ORDER BY sentTime DESC LIMIT :pageSize OFFSET :offset")
         fun getMessage(channelId: String,offset: Int, pageSize:String): Flow<List<ChannelMessage>>
 
     }

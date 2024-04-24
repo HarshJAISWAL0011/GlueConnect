@@ -19,7 +19,7 @@ data class SendersWithLastMessage( var id: Int=0,
                                    val messageType: String? = "text",
                                    var newMessageCount: Int,
                                    var last_message: String? = "",
-                                   var receiveTime: Long?=0)
+                                   var sentTime: Long?=0)
 
 data class GroupSendersWithMessage(
     var id: Int = 0,
@@ -62,7 +62,7 @@ data class ChannelsWithMessage(
     var messageType: String? = "text",
     var newMessageCount: Int,
     var last_message: String? = "",
-    var receiveTime: Long? = 0,
+    var sentTime: Long? = 0,
     var isAdmin: Int
 )
 

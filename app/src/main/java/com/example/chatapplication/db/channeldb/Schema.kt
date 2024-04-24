@@ -32,6 +32,5 @@ data class ChannelMessage(
     val channelId: String,
     val messageType: String?="text",
     var message: String,
-    val receiveTime: Long = 0,
     val sentTime: Long = 0,
 )

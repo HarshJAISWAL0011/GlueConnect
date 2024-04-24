@@ -8,10 +8,13 @@ import com.example.chatapplication.Repository.ChannelRepo
 import com.example.chatapplication.Repository.GroupChatRepo
 import com.example.chatapplication.db.channeldb.ChannelMessage
 import com.example.chatapplication.db.groupdb.GroupMessage
+import com.example.chatapplication.firebase.FirestoreDb
 import com.example.util.GroupMessageData
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class ChannelChatViewModel( var  id: String, private val repository: ChannelChatRepo) : ViewModel() {
     private var _chatListState = MutableStateFlow<List<ChannelMessage>>(emptyList())
@@ -26,15 +29,31 @@ class ChannelChatViewModel( var  id: String, private val repository: ChannelChat
     }
 
 
-    fun loadOldMessage() {
-        println("loading more data")
-        viewModelScope.launch {
-            var temp = mutableListOf<ChannelMessage>()
-            repository.getOlderMessages()?.forEach(){
-                temp.add(it)
-            }
-            _chatListState.value = _chatListState.value + temp
+    suspend fun loadOldMessageDB(latestTime: Long): List<ChannelMessage>{
+        val messageList =  FirestoreDb.getOlderChannelChats(id,latestTime)
+        var result = messageList.mapNotNull { document ->
+            ChannelMessage(document["messageId"].toString(), document["channelId"].toString(), document["messageType"].toString(), document["message"].toString(),
+                document["timestamp"].toString().toLong())
         }
+//        _chatListState.value = _chatListState.value + result
+        println("joined channel result size = ${messageList.size} $latestTime ")
+        return result
+    }
+    suspend fun loadOldMessage(): List<ChannelMessage> {
+        println("loading more data")
+        var temp = mutableListOf<ChannelMessage>()
+
+        var list = withContext(Dispatchers.IO) {
+            repository.getOlderMessages() ?: emptyList()
+        }
+        _chatListState.value += list
+        return list
+//        viewModelScope.launch {
+//            repository.getOlderMessages()?.forEach(){
+//                temp.add(it)
+//            }
+
+//        }
     }
 
 }

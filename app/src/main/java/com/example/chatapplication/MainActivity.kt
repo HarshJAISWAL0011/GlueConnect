@@ -227,33 +227,8 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
 
         val sharedPref = getSharedPreferences(Constants.PREF, MODE_PRIVATE)
         val firstTimeDataGot  = sharedPref.getBoolean(PREF_SETUP_DATA, false)
-        if(!firstTimeDataGot){
-
-        }
 
 
-        val answerIntent = Intent(this, RTCActivity::class.java).apply {
-            action = "ACTION_ANSWER_CALL"
-            putExtra("callerId", callerId)
-        }
-
-        val answerPendingIntent = PendingIntent.getActivity(
-            this,
-            0,
-            answerIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
-        )
-
-        val declineIntent = Intent(this, MainActivity::class.java).apply {
-            action = "ACTION_DECLINE_CALL"
-        }
-
-        val declinePendingIntent = PendingIntent.getActivity(
-            this,
-            0,
-            declineIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
-        )
 
 
 
@@ -290,7 +265,11 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
 //            channelDatabase.channelMsgDao().insertMessage(ChannelMessage("00015","011","text","msg1",2))
 
             messageListener(baseContext)
-            getInitialData(MY_ID, baseContext)
+            if(!firstTimeDataGot){
+                getInitialData(MY_ID, baseContext)
+                sharedPref.edit().putBoolean(PREF_SETUP_DATA, true).apply()
+            }
+//            ChannelDatabase.getDatabase(this@MainActivity).channelMsgDao().deleteAllMessageFrom("nbx8nZOOLgOubpJ0I6t8")
 
         }
 

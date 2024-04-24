@@ -48,6 +48,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.Constants
+import com.example.Constants.MY_ID
 import com.example.Constants.PREF
 import com.example.chatapplication.MainActivity
 import com.example.chatapplication.R
@@ -143,6 +144,7 @@ class LoginActivity : ComponentActivity() {
                     sharedPref.putString("userId",user?.uid)
                     sharedPref.putString("phone",phoneNumber)
                         .apply()
+                    MY_ID = user?.uid?:""
 
                     val intent = Intent(this, MainActivity::class.java)
                     startActivity(intent)
