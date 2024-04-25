@@ -44,6 +44,9 @@ class RTCActivity : AppCompatActivity() {
         private const val CAMERA_AUDIO_PERMISSION_REQUEST_CODE = 1
         private const val CAMERA_PERMISSION = Manifest.permission.CAMERA
         private const val AUDIO_PERMISSION = Manifest.permission.RECORD_AUDIO
+        const val READ_STORAGE_PERMISSION = Manifest.permission.READ_EXTERNAL_STORAGE
+        const val WRITE_STORAGE_PERMISSION = Manifest.permission.WRITE_EXTERNAL_STORAGE
+        const val READ_CONTACT_PERMISSION = Manifest.permission.READ_CONTACTS
          const val TAGGER = "Check:"
          var isJoin = false
         var callerId = ""

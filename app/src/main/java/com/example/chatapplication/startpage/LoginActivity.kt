@@ -50,6 +50,8 @@ import androidx.compose.ui.unit.sp
 import com.example.Constants
 import com.example.Constants.MY_ID
 import com.example.Constants.PREF
+import com.example.Constants.feild_phone
+import com.example.Constants.path_users
 import com.example.chatapplication.MainActivity
 import com.example.chatapplication.R
 import com.example.chatapplication.startpage.ui.theme.ChatApplicationTheme
@@ -67,11 +69,14 @@ import com.google.firebase.auth.FirebaseAuthSettings
 import com.google.firebase.auth.PhoneAuthCredential
 import com.google.firebase.auth.PhoneAuthOptions
 import com.google.firebase.auth.PhoneAuthProvider
+import com.google.firebase.firestore.SetOptions
+import com.google.firebase.firestore.firestore
 import com.google.firebase.initialize
 import com.mukeshsolanki.OTP_VIEW_TYPE_BORDER
 import com.mukeshsolanki.OtpView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -140,9 +145,14 @@ class LoginActivity : ComponentActivity() {
                     showProgress.value = false
 
                     val user = task.result?.user
+                    GlobalScope.launch {
+                        Firebase.firestore.collection(path_users).document(user?.uid?:"").set(
+                            hashMapOf(feild_phone to phoneNumber) , SetOptions.merge()
+                        )
+                    }
                     val sharedPref = getSharedPreferences(PREF, MODE_PRIVATE).edit()
                     sharedPref.putString("userId",user?.uid)
-                    sharedPref.putString("phone",phoneNumber)
+                    sharedPref.putString(feild_phone,phoneNumber)
                         .apply()
                     MY_ID = user?.uid?:""
 

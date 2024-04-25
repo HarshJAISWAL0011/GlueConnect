@@ -63,6 +63,7 @@ object Constants {
    const val group_joined ="group_joined"
    const val group_created ="group_created"
    const val ChannelName ="channel_name"
+   const val feild_phone ="phone"
    const val PREF ="preference"
 
 }

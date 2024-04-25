@@ -11,6 +11,7 @@ import com.example.Constants.FIRESTORE_USERS
 import com.example.Constants.MESSAGE_TYPE_IMAGE
 import com.example.Constants.channels_created
 import com.example.Constants.channels_joined
+import com.example.Constants.feild_phone
 import com.example.Constants.groups_created
 import com.example.Constants.groups_joined
 import com.example.Constants.message
@@ -480,6 +481,36 @@ object  FirestoreDb {
             e.printStackTrace()
         }
 
+    }
+
+
+    suspend fun checkPhoneNumbersInFirestore(phoneNumbersList: List<String>): List<String> {
+         val db = Firebase.firestore
+        val collectionRef = db.collection(path_users)
+        println("device phone ")
+        try {
+            // Use whereIn query to check if phone numbers exist in Firestore
+            val querySnapshot = collectionRef
+                .whereIn(feild_phone, phoneNumbersList)
+                .get()
+                .await()
+
+            println("device phone ${querySnapshot.documents}")
+
+            // Retrieve existing phone numbers from Firestore
+            val existingPhoneNumbers = mutableListOf<String>()
+            for (document in querySnapshot.documents) {
+                val phoneNumber = document.getString(feild_phone) ?: ""
+                existingPhoneNumbers.add(phoneNumber)
+            }
+
+            return existingPhoneNumbers
+        } catch (e: Exception) {
+            // Handle any exceptions here
+            e.printStackTrace()
+            println("device phone error ${ e}")
+            return emptyList()
+        }
     }
 
 

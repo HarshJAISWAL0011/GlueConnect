@@ -13,8 +13,10 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.widget.RemoteViews
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.appcompat.app.AlertDialog
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
@@ -99,6 +101,7 @@ import com.example.chatapplication.Repository.ConversationRepository
 import com.example.chatapplication.Repository.GroupRepo
 import com.example.chatapplication.ui.theme.ChatApplicationTheme
 import com.example.chatapplication.WebSocket.WebSocketClient
+import com.example.chatapplication.adduser.AddUser
 import com.example.chatapplication.channel.ChannelVMFactory
 import com.example.chatapplication.channel.ChannelViewModel
 import com.example.chatapplication.channel.CreateChannelActivity
@@ -127,7 +130,7 @@ import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity(), IncomingCallListener {
 
-    private val WRITE_EXTERNAL_STORAGE_REQUEST_CODE = 123
+    val WRITE_EXTERNAL_STORAGE_REQUEST_CODE = 123
     lateinit var database: ChatDatabase
     lateinit var groupDatabase: GroupDatabase
     lateinit var channelDatabase: ChannelDatabase
@@ -138,6 +141,7 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
     lateinit var groupReop: GroupRepo
     lateinit var channelRepository: ChannelRepo
     val REQUEST_MEDIA_PROJECTION = 34;
+
 
     @SuppressLint("MissingPermission")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -229,10 +233,6 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
         val firstTimeDataGot  = sharedPref.getBoolean(PREF_SETUP_DATA, false)
 
 
-
-
-
-
         WebSocketClient.create(applicationContext, convRepo)
         connectFCM()
         Notification.createChannelId(this)
@@ -273,26 +273,8 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
 
         }
 
-        val permission = Manifest.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION
-        if (ContextCompat.checkSelfPermission(
-                this,
-                permission
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
-            // Permission is granted, proceed with starting the service
 
-        } else {
-            // Permission is not granted, request it from the user
-            ActivityCompat.requestPermissions(this, arrayOf(permission), REQUEST_MEDIA_PROJECTION)
-        }
-
-        if (ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            return
-        }
+        checkStoragePermission()
 
         CoroutineScope(Dispatchers.IO).launch {
             getNewMessageFirestore(MY_ID, database, baseContext)
@@ -301,69 +283,7 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
             createNotificationChannel(this@MainActivity)
         }
 
-//showCustomNotification(this)
-    }
-
-    @SuppressLint("MissingPermission")
-    private fun showCustomNotification(context: Context) {
-        // Create RemoteViews for custom notification layout
-        val contentView = RemoteViews(context.packageName, R.layout.notification_layout)
-
-        // Create the notification builder
-        val builder = NotificationCompat.Builder(context, "incoming_call_channel_id")
-            .setSmallIcon(R.drawable.ic_call)
-            .setCustomContentView(contentView)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setAutoCancel(false)
-
-        // Create the notification manager
-        val notificationManager = NotificationManagerCompat.from(context)
-
-        // Show the notification
-        notificationManager.notify(1, builder.build())
-
-        // Setup click listeners for buttons in the custom notification
-        contentView.setOnClickPendingIntent(
-            R.id.btnAnswer,
-            createAnswerPendingIntent(context)
-        )
-
-        contentView.setOnClickPendingIntent(
-            R.id.btnDecline,
-            createDeclinePendingIntent(context)
-        )
-
-        // Schedule automatic dismissal after 30 seconds
-        Handler(Looper.getMainLooper()).postDelayed({
-            notificationManager.cancel(1) // Remove the notification after 30 seconds
-        }, 30000) // 30 seconds delay
-    }
-
-    private fun createAnswerPendingIntent(context: Context): PendingIntent {
-        val answerIntent = Intent(context, RTCActivity::class.java).apply {
-            action = "ACTION_ANSWER_CALL"
-            // Add extras if needed
-        }
-        return PendingIntent.getActivity(
-            context,
-            0,
-            answerIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
-        )
-    }
-
-    private fun createDeclinePendingIntent(context: Context): PendingIntent {
-        val declineIntent = Intent(context, MainActivity::class.java).apply {
-            action = "ACTION_DECLINE_CALL"
-            // Add extras if needed
-        }
-        return PendingIntent.getActivity(
-            context,
-            0,
-            declineIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
-        )
-    }
+     }
 
     private fun createNotificationChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -387,9 +307,7 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
     }
 
 
-
-
-    fun requestStoragePermission() {
+    private fun requestStoragePermission() {
         if (ContextCompat.checkSelfPermission(
                 this, Manifest.permission.WRITE_EXTERNAL_STORAGE
             ) != PackageManager.PERMISSION_GRANTED ||
@@ -408,17 +326,60 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
         }
     }
 
+    private fun checkStoragePermission() {
+        if ((ContextCompat.checkSelfPermission(this, RTCActivity.READ_STORAGE_PERMISSION)
+                    != PackageManager.PERMISSION_GRANTED) &&
+            (ContextCompat.checkSelfPermission(this, RTCActivity.WRITE_STORAGE_PERMISSION)
+                    != PackageManager.PERMISSION_GRANTED)) {
+            requestStoragePermission()
+        } else {
+//            requestStoragePermission()
+        }
+    }
+
+    private fun requestStoragePermission(dialogShown: Boolean = false) {
+        if (ActivityCompat.shouldShowRequestPermissionRationale(this, RTCActivity.READ_STORAGE_PERMISSION) &&
+            ActivityCompat.shouldShowRequestPermissionRationale(this, RTCActivity.WRITE_STORAGE_PERMISSION) &&
+            !dialogShown) {
+            showPermissionRationaleDialog()
+        } else {
+            ActivityCompat.requestPermissions(this, arrayOf(
+                RTCActivity.READ_STORAGE_PERMISSION,
+                RTCActivity.WRITE_STORAGE_PERMISSION
+            ), WRITE_EXTERNAL_STORAGE_REQUEST_CODE
+            )
+        }
+    }
+
+    private fun showPermissionRationaleDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("Camera And Audio Permission Required")
+            .setMessage("This app need the camera and audio to function")
+            .setPositiveButton("Grant") { dialog, _ ->
+                dialog.dismiss()
+                requestStoragePermission(true)
+            }
+            .setNegativeButton("Deny") { dialog, _ ->
+                dialog.dismiss()
+                Toast.makeText(this,"Permission Denied",Toast.LENGTH_LONG).show()
+            }
+            .show()
+    }
+
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<String>,
         grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+
         if (requestCode == WRITE_EXTERNAL_STORAGE_REQUEST_CODE) {
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // Permission granted, proceed with file operations
+            if (grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+                // Permission granted
             } else {
-                // Permission denied, handle accordingly
+                // Permission denied
+                checkStoragePermission()
+
             }
         }
     }
@@ -443,15 +404,6 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
         }
 
     }
-
-    private object RippleCustomTheme : RippleTheme {
-        @Composable
-        override fun defaultColor() = Color.Blue
-
-        @Composable
-        override fun rippleAlpha(): RippleAlpha = RippleAlpha(0.0f,0.0f,0.0f,0.0f)
-    }
-
 
      object ButtonRippleTheme : RippleTheme {
         @Composable
@@ -677,18 +629,29 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 15.dp, end = 10.dp, top = 15.dp),
+                    .padding(start = 12.dp, end = 10.dp, top = 15.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.drawer),
-                    contentDescription = "",
-                    modifier = Modifier.size(30.dp)
-                )
+                IconButton(onClick = {
+                    val intent = Intent(context, AddUser::class.java)
+                    startActivity(intent) },
+
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.add_user),
+                        contentDescription = "",
+                        modifier = Modifier
+                            .size(21.dp)
+                           ,
+                        tint= Color.White
+                    )
+                }
+
                 Text(
                     text = "MESSAGES",
                     modifier = Modifier.fillMaxWidth(0.9f),
                     textAlign = TextAlign.Center,
+                    color = Color.White,
                     fontFamily = FontFamily(
                         Font(R.font.josefinsans)
                     )

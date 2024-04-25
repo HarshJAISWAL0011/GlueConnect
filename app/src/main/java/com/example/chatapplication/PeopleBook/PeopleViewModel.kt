@@ -17,12 +17,11 @@ class PeopleViewModel (val database: ChatDatabase, private var conversationRepo:
     private var _peopleListState = MutableStateFlow<List<SendersWithLastMessage>>(emptyList())
     var peopleListState: StateFlow<List<SendersWithLastMessage>> = _peopleListState
     init {
-//        peopleListState = conversationRepo.peopleList.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
         viewModelScope.launch {
 
             conversationRepo.peopleList.conflate().collect{list->
                 _peopleListState.value = list.toList().reversed()
-                println("PeopleList size in viewmodel "+ list.size)
+                println("PeopleList in viewmodel "+ list)
             }
         }
     }

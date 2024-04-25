@@ -176,7 +176,7 @@ fun ChannelList(viewModel: ChannelViewModel, context: Context){
                                         if (showMyChannel) {
                                             channelList.clear()
                                             channelList.addAll(myChannels)
-                                            channelType= "Channel Created"
+                                            channelType = "Channel Created"
                                         } else {
                                             channelList.clear()
                                             channelList.addAll(joinedPublicChannels)
@@ -288,16 +288,16 @@ fun ChatList(peopleViewModel: PeopleViewModel, context:Context){
         LazyColumn (modifier = Modifier.background(color = colorResource(id = R.color.background))){
             items(peopleList.value){it->
 
-                ChatItem(it,"") {
+                if(it.last_message != null) {
+                    ChatItem(it, "") {
+                        if (it.newMessageCount > 0)
+                            peopleViewModel.resetNewMessageCount(it)
 
-                    intent.putExtra("id",it.email)
-                    intent.putExtra("type","individual")
-                    intent.putExtra("displayName",it.name)
-
-                    if(it.newMessageCount > 0)
-                        peopleViewModel.resetNewMessageCount(it)
-
-                    context.startActivity(intent)
+                        intent.putExtra("id", it.email)
+                        intent.putExtra("type", "individual")
+                        intent.putExtra("displayName", it.name)
+                        context.startActivity(intent)
+                    }
                 }
             }
         }
@@ -337,7 +337,7 @@ fun ChatItem(sender: SendersWithLastMessage, lastMsgSender: String, onClick: ()-
                 text = sender.name,
                 style = if (sender.newMessageCount == 0) fontStyleHeading else fontStyleHeadingNewMsg,
             )
-            Spacer(modifier = Modifier.height(11.dp))
+            Spacer(modifier = Modifier.height(7.dp))
 
 
             sender.last_message?.let {
@@ -356,47 +356,55 @@ fun ChatItem(sender: SendersWithLastMessage, lastMsgSender: String, onClick: ()-
                         )
                     }
 
-                    if (sender.messageType == MESSAGE_TYPE_IMAGE) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.picture_file),
-                            contentDescription = "",
-                            modifier = Modifier.size(14.dp),
-                            tint = Color.Gray
-                        )
-                        Spacer(modifier = Modifier.width(5.dp))
-                        Text(
-                            text = "Image",
-                            style = fontStyleContent,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
+                    if(it.isNotEmpty()) {
 
-                    else if (sender.messageType == MESSAGE_TYPE_AUDIO) {
+                        if (sender.messageType == MESSAGE_TYPE_IMAGE) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.picture_file),
+                                contentDescription = "",
+                                modifier = Modifier.size(14.dp),
+                                tint = Color.Gray
+                            )
+                            Spacer(modifier = Modifier.width(5.dp))
+                            Text(
+                                text = "Image",
+                                style = fontStyleContent,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        } else if (sender.messageType == MESSAGE_TYPE_AUDIO) {
 
-                        Icon(
-                            painter = painterResource(id = R.drawable.audio_file),
-                            contentDescription = "",
-                            modifier = Modifier.size(14.dp),
-                            tint = Color.Gray
-                        )
-                        Spacer(modifier = Modifier.width(5.dp))
+                            Icon(
+                                painter = painterResource(id = R.drawable.audio_file),
+                                contentDescription = "",
+                                modifier = Modifier.size(14.dp),
+                                tint = Color.Gray
+                            )
+                            Spacer(modifier = Modifier.width(5.dp))
+                            Text(
+                                text = "Audio",
+                                style = fontStyleContent,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        } else
+                            Text(
+                                text = it,
+                                style = fontStyleContent,
+                                modifier = Modifier.padding(bottom = 4.dp),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                    }else{
                         Text(
-                            text = "Audio",
-                            style = fontStyleContent,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-
-                    else
-                        Text(
-                            text = it,
+                            text = "deleted message",
                             style = fontStyleContent,
                             modifier = Modifier.padding(bottom = 4.dp),
                             maxLines = 1,
+                            fontStyle = FontStyle.Italic,
                             overflow = TextOverflow.Ellipsis
                         )
+                    }
                 }
             }
         }

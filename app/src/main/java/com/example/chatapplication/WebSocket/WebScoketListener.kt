@@ -2,6 +2,7 @@ package com.example.chatapplication.WebSocket
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.database.sqlite.SQLiteConstraintException
 import android.util.Log
 import com.example.Constants
 import com.example.Constants.GroupId
@@ -176,7 +177,10 @@ object webSocketListener : WebSocketListener() {
         }
         catch (e: SQLException){
         Log.d(TAG, "error: ${e.message}")
-    }
+        }
+        catch (e: SQLiteConstraintException){
+            e.printStackTrace()
+        }
     }
 
     override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
