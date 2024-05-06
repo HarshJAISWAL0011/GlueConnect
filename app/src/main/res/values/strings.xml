@@ -14,4 +14,5 @@
     <string name="title_activity_test">TestActivity</string>
     <string name="title_activity_add_member">AddMember</string>
     <string name="sms_body">Chat with me on Glue Connect. Download the app now: link</string>
+    <string name="title_activity_search">SearchActivity</string>
 </resources>

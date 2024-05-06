@@ -27,8 +27,10 @@ import androidx.compose.material.icons.outlined.Send
 import androidx.compose.material.ripple.LocalRippleTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -44,6 +46,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContentResolverCompat
@@ -68,6 +71,19 @@ data class Contact(
 fun ContactList(contacts:List<Contact>,onBackPressed:()->Unit) {
     val context = LocalContext.current
     var sequenceHeading = remember { mutableStateOf((-1)) }
+//    var showConnectedMsg = remember { mutableStateOf(false) }
+//    var showToConnectMsg = remember { mutableStateOf(false) }
+    var connectedContacts = remember {mutableStateListOf<Contact>() }
+    var notConnectedContacts = remember { mutableStateListOf<Contact>() }
+    LaunchedEffect(contacts.size) {
+        println("contact size ====== ${contacts.size}")
+        contacts.forEach{
+            if(it.isConnected)
+                connectedContacts.add(it)
+            else
+                notConnectedContacts.add(it)
+        }
+    }
 
 
     Scaffold(
@@ -97,81 +113,78 @@ fun ContactList(contacts:List<Contact>,onBackPressed:()->Unit) {
                 .padding(it),
             contentPadding = PaddingValues(16.dp)
         ) {
-            items(contacts) { contact ->
-
-                var currentHeading = when(contact.isConnected){
-                    true -> 1
-                    else -> 2
-                }
-                if(currentHeading != sequenceHeading.value){
-                    println("currentHeading $currentHeading  && sequeHeading ${sequenceHeading.value}")
-                     sequenceHeading.value =currentHeading
-                     if(currentHeading == 1){
-                        Text(
-                            text = "Contacts on Glue Connect",
-                            textAlign = TextAlign.Start,
-                            color = colorResource(id = R.color.primary),
-                            fontStyle = FontStyle.Italic,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .alpha(0.9f)
-                                .padding(start = 15.dp, top = 10.dp, bottom = 15.dp)
-                        )
-                    }else if(currentHeading == 2){
-                        println("Inviting")
-                        Text(
-                            text = "Invite to Glue Connect",
-                            textAlign = TextAlign.Start,
-                            color = colorResource(id = R.color.primary),
-                            fontStyle = FontStyle.Italic,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .alpha(0.9f)
-                                .padding(start = 15.dp, top = 10.dp, bottom = 15.dp)
-                        )
-                    }
-                }
-                ContactItem(contact,{
-                    CoroutineScope(Dispatchers.IO).launch {
-                        try {
-                        ChatDatabase.getDatabase(context).senderDao()
-                            .insertNewSender(Sender(0, contact.name, contact.phoneNumber, 0))
-                        }catch (e: SQLiteConstraintException){
-                            e.printStackTrace()
-                        }
-                        val intent =Intent(context, ChatActivity::class.java)
-                        intent.putExtra("id",contact.phoneNumber)
-                        intent.putExtra("type","individual")
-                        intent.putExtra("displayName",contact.name)
-                        context.startActivity(intent)
-                    }
-
-                },{
-                    try {
-                        // Create an intent to launch the SMS app
-                        val smsIntent = Intent(Intent.ACTION_VIEW)
-
-                        // Set the data URI for sending an SMS
-                        smsIntent.data = Uri.parse("smsto:${contact.phoneNumber}")
-
-                        // Add the message body to the intent
-                        smsIntent.putExtra("sms_body", context.getString(R.string.sms_body))
-
-                        // Launch the SMS app
-                        context.startActivity(smsIntent)
-                    } catch (e: Exception) {
-                        // Handle any exceptions that may occur
-                        e.printStackTrace()
-                        Log.e("SendMessage", "Error sending SMS: $e")
-                        Toast.makeText(context, "Error sending SMS", Toast.LENGTH_SHORT).show()
-                    }
-                })
+             item {
+                 if(connectedContacts.size> 0)
+                 Text(
+                     text = "Contacts on Glue Connect",
+                     textAlign = TextAlign.Start,
+                     color = colorResource(id = R.color.primary),
+                     fontStyle = FontStyle.Italic,
+                     modifier = Modifier
+                         .fillMaxWidth()
+                         .alpha(0.9f)
+                         .padding(start = 15.dp, top = 10.dp, bottom = 15.dp)
+                 )
+             }
+            items(connectedContacts) { contact ->
+                PopulateItems(contact,context)
                 Spacer(modifier = Modifier.height(9.dp))
             }
+
+             item {
+                 if(notConnectedContacts.size> 0)
+                 Text(
+                     text = "Invite to Glue Connect",
+                     textAlign = TextAlign.Start,
+                     color = colorResource(id = R.color.primary),
+                     fontStyle = FontStyle.Italic,
+                     modifier = Modifier
+                         .fillMaxWidth()
+                         .alpha(0.9f)
+                         .padding(start = 15.dp, top = 10.dp, bottom = 15.dp)
+                 )
+             }
+             items(notConnectedContacts) { contact ->
+
+                 PopulateItems(contact,context)
+                 Spacer(modifier = Modifier.height(9.dp))
+             }
         }
     }
 }
 
+
+@Composable
+private fun PopulateItems(contact: Contact, context:Context) {
+    ContactItem(contact,{
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                ChatDatabase.getDatabase(context).senderDao()
+                    .insertNewSender(Sender(0, contact.name, contact.phoneNumber, 0))
+            }catch (e: SQLiteConstraintException){
+                e.printStackTrace()
+            }
+            val intent =Intent(context, ChatActivity::class.java)
+            intent.putExtra("id",contact.phoneNumber)
+            intent.putExtra("type","individual")
+            intent.putExtra("displayName",contact.name)
+            context.startActivity(intent)
+        }
+
+    },{
+        try {
+            val smsIntent = Intent(Intent.ACTION_VIEW)
+            smsIntent.data = Uri.parse("smsto:${contact.phoneNumber}")
+            smsIntent.putExtra("sms_body", context.getString(R.string.sms_body))
+            // Launch the SMS app
+            context.startActivity(smsIntent)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Log.e("SendMessage", "Error sending SMS: $e")
+            Toast.makeText(context, "Error sending SMS", Toast.LENGTH_SHORT).show()
+        }
+    })
+}
 @Composable
 fun ContactItem(contact: Contact, onClick:() ->Unit, onInvite:()-> Unit) {
     Row    (

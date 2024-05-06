@@ -4,9 +4,12 @@ import android.util.Log
 import com.example.Constants.FCM_title
 import com.example.Constants.message
 import com.example.Constants.senderId
+import com.example.chatapplication.db.ChatDatabase
 import com.example.util.Notification
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 
 class CloudMessaging  : FirebaseMessagingService() {
  val TAG = "FirebaseServiceMessaging";
@@ -14,13 +17,27 @@ class CloudMessaging  : FirebaseMessagingService() {
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
         super.onMessageReceived(remoteMessage)
 
-        remoteMessage.data.isNotEmpty().let {
-            Log.d(TAG, "Message data payload: ${remoteMessage.data}")
-            Notification.sendNotification(this,remoteMessage.data.get(FCM_title),
-                remoteMessage.data.get(message),
-                remoteMessage.data.get(senderId))
-        }
+        GlobalScope.launch {
+            remoteMessage.data.isNotEmpty().let {
+                Log.d(TAG, "Message data payload: ${remoteMessage.data}")
+                var receivedFrom = remoteMessage.data.get(senderId) ?: ""
+                var messageData = remoteMessage.data.get(message) ?: ""
+                var title = remoteMessage.data.get(FCM_title) ?: ""
 
+                if(receivedFrom.isNotEmpty()){
+                    val senderName =ChatDatabase.getDatabase(this@CloudMessaging).senderDao().getSender(receivedFrom)?.name?:""
+                    if(senderName.isNotEmpty())
+                        receivedFrom = senderName
+                }
+
+                Notification.sendNotification(
+                    this@CloudMessaging,
+                    title,
+                    messageData,
+                    receivedFrom
+                )
+            }
+        }
     }
 
     override fun onNewToken(token: String) {

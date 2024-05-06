@@ -107,8 +107,7 @@ val customFontFamily = FontFamily(
 @Composable
 fun CreateChannelPage(database: ChannelDatabase, onDone: ()-> Unit) {
 
-    val desc = remember { mutableStateOf(TextFieldValue("")) }
-    val name = remember { mutableStateOf(TextFieldValue("")) }
+     val name = remember { mutableStateOf(TextFieldValue("")) }
     val options = listOf("Select channel type", "News", "Education","Entertainment","Others")
     var selectedIndex by remember { mutableStateOf(0) }
     var nameError by remember { mutableStateOf(false) }
@@ -261,6 +260,7 @@ fun CreateChannelPage(database: ChannelDatabase, onDone: ()-> Unit) {
                     cursorColor = colorResource(id = R.color.primary),
                     focusedIndicatorColor = colorResource(id = R.color.primary),
                     unfocusedIndicatorColor = colorResource(id = R.color.primary).copy(0.7f),
+                    errorIndicatorColor = Color.Red
                 ),
                 textStyle = TextStyle(fontSize = 17.sp),
                 modifier = Modifier

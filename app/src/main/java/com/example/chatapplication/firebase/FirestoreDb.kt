@@ -9,6 +9,7 @@ import com.example.Constants
 import com.example.Constants.FIRESTORE_MESSAGES
 import com.example.Constants.FIRESTORE_USERS
 import com.example.Constants.MESSAGE_TYPE_IMAGE
+import com.example.Constants.MY_ID
 import com.example.Constants.channels_created
 import com.example.Constants.channels_joined
 import com.example.Constants.feild_phone
@@ -37,6 +38,7 @@ import com.example.retrofit.RetrofitBuilder
 import com.example.util.ChannelData
 import com.example.util.CreateChannelData
 import com.example.util.DeleteMessageData
+import com.example.util.SearchUserData
 import com.example.util.SendGroupMessage
 import com.example.util.util.URLdownloadFile
 import com.google.android.gms.tasks.Task
@@ -272,6 +274,32 @@ object  FirestoreDb {
         return dataList
     }
 
+    suspend fun getSearchUserList( searchText: String,): List<SearchUserData> {
+        val db = FirebaseFirestore.getInstance()
+        val collectionRef = db.collection(path_users)
+            .whereGreaterThanOrEqualTo("name", searchText)
+            .whereLessThan("name", searchText + "\uf8ff")
+
+        val dataList = mutableListOf<SearchUserData>()
+
+        try {
+            val querySnapshot = collectionRef.get().await()
+            println("search query data =${querySnapshot.documents}")
+
+            for (document in querySnapshot.documents) {
+                val data = SearchUserData(document["name"].toString(),document["description"].toString(),document["profile_url"].toString(),"")
+                data?.connection_status = document.id
+                if(data != null)
+                    dataList.add(data)
+            }
+            println(querySnapshot.size())
+        } catch (e: Exception) {
+            println("Error fetching channel list: ${e.message}")
+        }
+
+        return dataList
+    }
+
    suspend fun getChannelFromId(id: String): Channels?{
         val db = FirebaseFirestore.getInstance()
         val collectionRef = db.collection(path_channels).document(id)
@@ -336,6 +364,12 @@ object  FirestoreDb {
         return results
     }
 
+    suspend fun addFCMtoken(token: String){
+        Firebase.firestore.collection(path_users).document(MY_ID)
+            .set(mapOf(
+                "registrationToken" to  token
+            ), SetOptions.merge())
+    }
 
     suspend fun getChannelChats(id:String,lastItem: DocumentSnapshot?):List< DocumentSnapshot>{
         println(" getChannelChats data =$id ")
@@ -483,7 +517,34 @@ object  FirestoreDb {
 
     }
 
+   suspend fun getProfileData(id:String): Task<Map<String, Any>> {
+       val result =  TaskCompletionSource<Map<String, Any>>()
+       CoroutineScope(Dispatchers.IO).launch {
+           val db = Firebase.firestore
 
+           val datamap = mutableMapOf<String, Any>()
+
+           val docSnapshot = db.collection(path_users).document(id).get().await()
+
+           if(!docSnapshot.exists()) {
+               result.setResult(emptyMap<String, Any>())
+               return@launch
+           }
+          if(docSnapshot.contains("description")) datamap.put("description",docSnapshot["description"].toString())
+          if(docSnapshot.contains("about")) datamap.put("about",docSnapshot["about"].toString())
+          if(docSnapshot.contains("location")) datamap.put("location",docSnapshot["location"].toString())
+          if(docSnapshot.contains("job_type")) datamap.put("job_type",docSnapshot["job_type"].toString())
+          if(docSnapshot.contains("profile_url")) datamap.put("profile_url",docSnapshot["profile_url"].toString())
+          if(docSnapshot.contains("name")) datamap.put("name",docSnapshot["name"].toString())
+          if(docSnapshot.contains("skills")) (docSnapshot["skills"] as? List<String>)?.let {
+              datamap.put("skills",
+                  it
+              )
+          }
+           result.setResult(datamap)
+       }
+       return result.task
+   }
     suspend fun checkPhoneNumbersInFirestore(phoneNumbersList: List<String>): List<String> {
          val db = Firebase.firestore
         val collectionRef = db.collection(path_users)

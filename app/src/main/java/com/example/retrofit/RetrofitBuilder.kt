@@ -1,12 +1,14 @@
 package com.example.retrofit
 
+import com.example.Constants.BASE_URL
 import kotlinx.coroutines.runBlocking
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
 object RetrofitBuilder {
     lateinit var apiService: ApiService
-    val baseurl ="https://chat-websocket-64k2.onrender.com"
+    val baseurl =BASE_URL
+//        "https://chat-websocket-64k2.onrender.com"
 //        "https://chat-websocker.onrender.com"
 
     fun create():ApiService {

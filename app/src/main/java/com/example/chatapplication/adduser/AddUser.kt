@@ -43,7 +43,7 @@ class AddUser : ComponentActivity() {
 
     private val CONTACT_PERMISSION_CODE =121
     private var contacts = mutableStateListOf<Contact>()
-    private var showDialogState = mutableStateOf(false)
+    private var showDialogState = mutableStateOf(true)
 
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -67,13 +67,35 @@ class AddUser : ComponentActivity() {
                 ) {
 
                     LaunchedEffect(Unit) {
-//                        val deviceContacts = retrieveContacts(this@AddUser.contentResolver)
-//                        val sortedDeviceContacts = deviceContacts.sortedBy { it.name }
-//                        val ans = sortedDeviceContacts.distinctBy { it.phoneNumber }
-//                        val finalSortedContacts = ans.sortedBy { !it.isConnected }
-//                        contacts.addAll(finalSortedContacts)
+                        CoroutineScope(Dispatchers.IO).launch {
+                            val deviceContacts = retrieveContacts(this@AddUser.contentResolver)
+                            // Sort device contacts by name
+                            val sortedDeviceContacts = deviceContacts.sortedBy { it.name }.distinctBy { it.phoneNumber }
 
+                            // Extract phone numbers from device contacts
+                            val devicePhoneNumbers = sortedDeviceContacts.mapNotNull { it.phoneNumber }
 
+                            val chunkSize = 30
+                            val devicePhoneChunks = devicePhoneNumbers.chunked(chunkSize)
+
+                            // List to hold the combined results from Firestore
+                            val connectedUserPhoneNumbers = mutableListOf<String>()
+
+                            devicePhoneChunks.forEach { phoneChunk ->
+                                val chunkResult = checkPhoneNumbersInFirestore(phoneChunk)
+                                connectedUserPhoneNumbers.addAll(chunkResult)
+                            }
+
+                            sortedDeviceContacts.forEach { contact ->
+                                contact.isConnected = connectedUserPhoneNumbers.contains(contact.phoneNumber)
+                            }
+
+                            val finalSortedContacts0 = sortedDeviceContacts.sortedBy { it.name }
+                            val finalSortedContacts = finalSortedContacts0.sortedBy { !it.isConnected }
+                            contacts.addAll(finalSortedContacts)
+                            showDialogState.value = false
+
+                        }
                     }
 
                     if (showDialogState.value) {

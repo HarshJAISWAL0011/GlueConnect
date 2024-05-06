@@ -12,7 +12,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.widget.RemoteViews
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -109,13 +109,13 @@ import com.example.chatapplication.db.channeldb.ChannelDatabase
 import com.example.chatapplication.db.groupdb.Group
 import com.example.chatapplication.db.groupdb.GroupDatabase
 import com.example.chatapplication.db.groupdb.GroupMember
+import com.example.chatapplication.firebase.FirestoreDb.addFCMtoken
 import com.example.chatapplication.firebase.FirestoreDb.getInitialData
 import com.example.chatapplication.firebase.FirestoreDb.getNewMessageFirestore
 import com.example.chatapplication.firebase.Listeners.messageListener
-import com.example.chatapplication.profile.ProfileActivity
+import com.example.chatapplication.profile.AccountActivity
 import com.example.chatapplication.webRTC.IncomingCallListener
 import com.example.chatapplication.webRTC.RTCActivity
-import com.example.chatapplication.webRTC.RTCActivity.Companion.callerId
 
 import com.example.retrofit.RetrofitBuilder
 import com.example.util.CreateGroupData
@@ -123,6 +123,8 @@ import com.example.util.CreateGroupData
 import com.example.util.Notification
 import com.example.util.SharedPrefConstant.PREF_SETUP_DATA
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import com.google.android.gms.tasks.OnCompleteListener
+import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -234,7 +236,6 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
 
 
         WebSocketClient.create(applicationContext, convRepo)
-        connectFCM()
         Notification.createChannelId(this)
 
         GlobalScope.launch {
@@ -265,6 +266,8 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
 //            channelDatabase.channelMsgDao().insertMessage(ChannelMessage("00015","011","text","msg1",2))
 
             messageListener(baseContext)
+            connectFCM()
+
             if(!firstTimeDataGot){
                 getInitialData(MY_ID, baseContext)
                 sharedPref.edit().putBoolean(PREF_SETUP_DATA, true).apply()
@@ -415,17 +418,16 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
 
 
     private fun connectFCM() {
-//        FirebaseMessaging.getInstance().token.addOnCompleteListener(OnCompleteListener { task ->
-//            if (!task.isSuccessful) {
-//                Log.w(TAG, "Fetching FCM registration token failed", task.exception)
-//                return@OnCompleteListener
-//            }
-//            val token = task.result
-//
-//            // Log and toast
-//            val msg = token
-//            println("firebase token =$msg")
-//        })
+        FirebaseMessaging.getInstance().token.addOnCompleteListener(OnCompleteListener { task ->
+            if (!task.isSuccessful) {
+                Log.w("MainActivity", "Fetching FCM registration token failed", task.exception)
+                return@OnCompleteListener
+            }
+            val token = task.result
+            CoroutineScope(Dispatchers.IO).launch {
+                addFCMtoken(token)
+            }
+        })
     }
 
 
@@ -561,7 +563,7 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
         val context = LocalContext.current
         var padding = if (showStatus) PaddingValues(
             start = 15.dp,
-            top = 30.dp,
+            top = 10.dp,
             bottom = 25.dp
         ) else PaddingValues(start = 15.dp, top = 30.dp)
         if (currentRoute != BottomNavItem.Home.route) {
@@ -666,7 +668,7 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
                             .background(Color.Gray)
                             .align(Alignment.CenterVertically)
                             .clickable {
-                                val intent = Intent(context, ProfileActivity::class.java)
+                                val intent = Intent(context, AccountActivity::class.java)
                                 startActivity(intent)
                             }
                     ) else {
@@ -697,7 +699,7 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (showStatus)
-                    StatusChatList()
+                    StatusChatList(LocalContext.current)
             }
         }
     }

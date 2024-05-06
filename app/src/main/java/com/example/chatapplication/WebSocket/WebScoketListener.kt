@@ -5,6 +5,7 @@ import android.content.Context
 import android.database.sqlite.SQLiteConstraintException
 import android.util.Log
 import com.example.Constants
+import com.example.Constants.BASE_URL
 import com.example.Constants.GroupId
 import com.example.Constants.GroupName
 import com.example.Constants.MESSAGE_TYPE_AUDIO
@@ -213,9 +214,8 @@ object WebSocketClient{
     }
 
     private fun createRequest(): Request {
-        val websocketURL ="https://chat-websocket-64k2.onrender.com"
-//            "ws://chat-websocker.onrender.com"
-//            "wss://socketsbay.com/wss/v2/1/demo/"
+        val websocketURL =BASE_URL
+
 
         return Request.Builder()
             .url(websocketURL)

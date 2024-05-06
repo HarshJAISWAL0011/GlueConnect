@@ -55,6 +55,13 @@ data class ChannelData(
     constructor():this("","","",0,"","",0)
 }
 
+data class SearchUserData(
+    var name: String,
+    var desc: String,
+    var profileUrl: String,
+    var connection_status: String = "",
+
+)
 data class ChannelsWithMessage(
     var id: Int = 0,
     var channelId: String,

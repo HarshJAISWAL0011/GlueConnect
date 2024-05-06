@@ -30,6 +30,7 @@ import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.IconButton
 import androidx.compose.material.OutlinedTextField
+import androidx.compose.material.TextField
 import androidx.compose.material.TextFieldDefaults
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.KeyboardArrowLeft
@@ -84,10 +85,12 @@ import com.example.chatapplication.ChatPage.ChatActivity
 import com.example.chatapplication.GroupPage.GroupListViewModel
 import com.example.chatapplication.MainActivity
 import com.example.chatapplication.PeopleBook.PeopleViewModel
+import com.example.chatapplication.adduser.AddUser
 import com.example.chatapplication.channel.ChannelViewModel
 import com.example.chatapplication.db.Sender
 import com.example.chatapplication.db.channeldb.ChannelDatabase
 import com.example.chatapplication.firebase.FirestoreDb
+import com.example.chatapplication.searchuser.SearchActivity
 import com.example.retrofit.RetrofitBuilder
 import com.example.util.ChannelData
 import com.example.util.ChannelsWithMessage
@@ -176,11 +179,11 @@ fun ChannelList(viewModel: ChannelViewModel, context: Context){
                                         if (showMyChannel) {
                                             channelList.clear()
                                             channelList.addAll(myChannels)
-                                            channelType = "Channel Created"
+                                            channelType = "Clubs Created"
                                         } else {
                                             channelList.clear()
                                             channelList.addAll(joinedPublicChannels)
-                                            channelType = "Public Channels"
+                                            channelType = "Open Clubs"
                                         }
                                     }
                                     .padding(5.dp)
@@ -440,30 +443,59 @@ fun ChatItem(sender: SendersWithLastMessage, lastMsgSender: String, onClick: ()-
 
 
 @Composable
-fun StatusChatList(){
+fun StatusChatList(context: Context){
     Row (modifier = Modifier
-        .fillMaxWidth(1f)){
+        .fillMaxWidth(1f)
+        .padding(horizontal = 40.dp)){
         Box(modifier = Modifier
-            .size(42.dp)
+            .height(42.dp).
+            fillMaxWidth()
             .clip(RoundedCornerShape(11.dp))
+            .clickable {
+                val intent = Intent(context, SearchActivity::class.java)
+                context.startActivity(intent)
+            }
             .background(colorResource(id = R.color.primary_variant))
             , contentAlignment = Alignment.Center) {
-            Image(
-                painter = painterResource(id = search), contentDescription = "", modifier = Modifier
-                    .size(40.dp)
-                    .padding(top = 4.dp),
-                contentScale = ContentScale.Fit,
-                colorFilter = ColorFilter.tint(color = Color.White)
-            )
-        }
-        LazyRow(modifier = Modifier
-            .padding(start = 20.dp)
-            .fillMaxWidth(1f)) {
-            items(10){
+//            Row(verticalAlignment = Alignment.CenterVertically) {
+//                TextField(
+//                    value ="",
+//                    onValueChange = {  },
+//                    maxLines = 2,
+//                     colors = TextFieldDefaults.textFieldColors(
+//                        textColor = Color.Black.copy(0.8f),
+//                        backgroundColor = Color.Transparent,
+//                        cursorColor = colorResource(id = R.color.primary),
+//                        focusedIndicatorColor = colorResource(id = R.color.primary),
+//                        unfocusedIndicatorColor = colorResource(id = R.color.primary).copy(0.7f),
+//                    ),
+//                    textStyle = TextStyle(fontSize = 17.sp),
+//                    modifier = Modifier
+//                        .weight(1f)
+//                        .padding(horizontal = 10.dp)
+//                        .defaultMinSize(minHeight = 1.dp)
+//
+//                )
 
-                StatusItem()
-            }
+                Image(
+                    painter = painterResource(id = search), contentDescription = "", modifier = Modifier
+                        .size(40.dp)
+                        .padding(top = 4.dp)
+                        .align(Alignment.CenterEnd),
+                    contentScale = ContentScale.Fit,
+                    colorFilter = ColorFilter.tint(color = Color.White)
+                )
+//            }
+
         }
+//        LazyRow(modifier = Modifier
+//            .padding(start = 20.dp)
+//            .fillMaxWidth(1f)) {
+//            items(10){
+//
+//                StatusItem()
+//            }
+//        }
     }
 
 }

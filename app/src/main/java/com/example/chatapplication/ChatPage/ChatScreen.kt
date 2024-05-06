@@ -17,6 +17,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -482,6 +483,10 @@ fun ChatsContentList(
         color = colorResource(id = R.color.background),
 
     ) {
+//        Box(modifier = Modifier.fillMaxSize()){
+//            Image(painter = painterResource(id = R.drawable.confetti), contentDescription ="",
+//                modifier = Modifier.fillMaxSize(), contentScale = ContentScale.FillBounds)
+//        }
         Column(modifier = Modifier.padding(start = 8.dp, end = 8.dp,top=8.dp, bottom = 5.dp)) {
             LazyColumn(
                 modifier = Modifier.weight(1f),

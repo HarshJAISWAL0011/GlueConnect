@@ -38,12 +38,27 @@
         android:windowSoftInputMode="adjustResize"
         tools:targetApi="31">
         <activity
+            android:name=".profile.ProfileActivity"
+            android:exported="false"
+            android:label="@string/title_activity_profile"
+            android:theme="@style/Theme.ChatApplication" />
+        <activity
+            android:name=".searchuser.ProfileActivity"
+            android:exported="false"
+            android:label="@string/title_activity_profile"
+            android:theme="@style/Theme.ChatApplication" />
+        <activity
+            android:name=".searchuser.SearchActivity"
+            android:exported="false"
+            android:label="@string/title_activity_search"
+            android:theme="@style/Theme.ChatApplication" />
+        <activity
             android:name=".adduser.AddUser"
             android:exported="false"
             android:label="@string/title_activity_add_member"
-            android:theme="@style/Theme.AppCompat.NoActionBar"/>
+            android:theme="@style/Theme.AppCompat.NoActionBar" />
         <activity
-            android:name=".profile.ProfileActivity"
+            android:name=".profile.AccountActivity"
             android:exported="false"
             android:label="@string/title_activity_profile"
             android:theme="@style/Theme.ChatApplication"
@@ -70,9 +85,7 @@
             android:name=".webRTC.RTCActivity"
             android:exported="false"
             android:label="@string/title_activity_rtcactivity"
-            android:theme="@style/Theme.AppCompat.NoActionBar">
-
-        </activity>
+            android:theme="@style/Theme.AppCompat.NoActionBar" />
         <activity
             android:name=".channel.CreateChannelActivity"
             android:exported="false"
@@ -99,7 +112,7 @@
             android:exported="true"
             android:grantUriPermissions="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.ChatApplication"></activity>
+            android:theme="@style/Theme.ChatApplication" />
 
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"

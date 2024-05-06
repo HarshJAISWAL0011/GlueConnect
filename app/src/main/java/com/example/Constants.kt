@@ -12,6 +12,10 @@ import org.json.JSONObject
 import java.sql.Timestamp
 
 object Constants {
+
+   const val BASE_URL ="https://chat-websocker.onrender.com"
+   //        "https://chat-websocket-64k2.onrender.com"
+//        "https://chat-websocker.onrender.com"
    const val new_connection ="New_Connection"
    const val new_message ="New_Message"
    const val new_group_message ="New_Group_Message"
