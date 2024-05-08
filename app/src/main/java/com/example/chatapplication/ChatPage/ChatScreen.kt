@@ -10,6 +10,7 @@ import android.graphics.drawable.shapes.Shape
 import android.media.MediaPlayer
 import android.media.MediaRecorder
 import android.net.Uri
+import android.os.Build
 import android.os.Environment
 import android.util.Log
 import android.widget.Toast
@@ -1033,7 +1034,13 @@ fun showBottomSheet(onSend: (msg: Message) -> Unit, context: Context) {
         onResult = { uri: Uri? ->
             CoroutineScope(Dispatchers.IO).launch {
                 if (uri != null) {
-                    val imgDir = File(Environment.getExternalStorageDirectory(), "/Chat/Images")
+                    val imgDir = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        // For Android 10 (API level 29) and above, use MediaStore to save the image
+                        File("${Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)}/Chat/")
+                    } else {
+                        // For older versions, use Environment.getExternalStoragePublicDirectory()
+                        Environment.getExternalStoragePublicDirectory("${Environment.DIRECTORY_PICTURES}/Chat}")
+                    }
                     imgDir.mkdirs()
                     val timeStamp: String =
                         SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
@@ -1042,7 +1049,7 @@ fun showBottomSheet(onSend: (msg: Message) -> Unit, context: Context) {
 
 
                     val time = System.currentTimeMillis()
-                    var job = CoroutineScope(Dispatchers.IO).launch {
+                    val job = CoroutineScope(Dispatchers.IO).launch {
                         saveImageToExternalStorage(EXT_DIR_IMAGE_LOCATION,context, uri, fileName)
                     }
                     job.join()
@@ -1050,7 +1057,7 @@ fun showBottomSheet(onSend: (msg: Message) -> Unit, context: Context) {
                     onSend(
                         Message(
                             MY_ID + time,userId, "image",
-                            "$imageFile", 0, time, time
+                            "${imageFile.absolutePath}", 0, time, time
                         )
                     )
 

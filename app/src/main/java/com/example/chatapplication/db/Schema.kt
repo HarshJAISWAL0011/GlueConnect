@@ -14,6 +14,7 @@ data class Sender(
     @PrimaryKey(autoGenerate = true)
     val id: Int=0,
     val name: String,
+    val profile_url: String,
     val email: String,
     var newMessageCount: Int
 )

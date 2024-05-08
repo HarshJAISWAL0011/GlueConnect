@@ -44,7 +44,7 @@ object  Notification {
         println(" Message data payload from sendNotif")
         var msgBody = message
 
-        var intent = Intent(context, ChatActivity::class.java)
+        var intent = Intent(context, MainActivity::class.java)
         intent.putExtra("id",senderId)
         var pendingTotalMessage = getIntDataSharedPref(context,Constants.total_message_pending) + 1;
 

@@ -10,6 +10,7 @@ import androidx.room.PrimaryKey
 data class Group(
     @PrimaryKey(autoGenerate = true)
     val id: Int=0,
+    val profile_url: String,
     val groupName: String="",
     val groupId: String,
     var newMessageCount: Int = 0

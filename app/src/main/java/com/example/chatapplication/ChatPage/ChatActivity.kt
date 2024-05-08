@@ -72,6 +72,8 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.ViewModelProvider
 import androidx.room.withTransaction
 import com.example.Constants
+import com.example.Constants.CURRENT_ACTIVITY
+import com.example.Constants.CURRENT_ACTIVITY_ID
 import com.example.Constants.EXT_DIR_IMAGE_CHANNEL_LOCATION
 import com.example.Constants.INCOMING_AUDIO_CALL
 import com.example.Constants.INCOMING_VIDEO_CALL
@@ -139,6 +141,8 @@ class ChatActivity : ComponentActivity() {
          id = intent.getStringExtra("id")
         type = intent.getStringExtra("type")
         displayName = intent.getStringExtra("displayName")
+        CURRENT_ACTIVITY = "ChatActivity"
+        CURRENT_ACTIVITY_ID = id?:""
 
         println("all ids are $id  $displayName $type" )
 
@@ -576,7 +580,6 @@ class ChatActivity : ComponentActivity() {
     }
 
 
-
     override fun onDestroy() {
         GlobalScope.launch {
             if (type == "group") {
@@ -602,7 +605,7 @@ class ChatActivity : ComponentActivity() {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 15.dp, end = 10.dp, top = 15.dp, bottom = 15.dp),
+                    .padding(start = 10.dp, end = 5.dp, top = 15.dp, bottom = 15.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
@@ -610,7 +613,7 @@ class ChatActivity : ComponentActivity() {
                     contentDescription = "",
                     tint = Color.White,
                     modifier = Modifier
-                        .padding(end = 15.dp)
+                        .padding(end = 7.dp)
                         .size(28.dp)
                         .clickable { super.onBackPressed() }
                 )
@@ -649,8 +652,8 @@ class ChatActivity : ComponentActivity() {
                 if(type != null && type == "individual") {
                     Box(modifier = Modifier
                         .padding(end = 15.dp)
-                        .height(39.dp)
-                        .width(42.dp)
+                        .height(36.dp)
+                        .width(39.dp)
                         .clip(RoundedCornerShape(11.dp))
                         .clickable {
                             GlobalScope.launch {
@@ -685,8 +688,8 @@ class ChatActivity : ComponentActivity() {
 
                     Box(modifier = Modifier
                         .padding(end = 15.dp)
-                        .height(39.dp)
-                        .width(42.dp)
+                        .height(36.dp)
+                        .width(39.dp)
                         .clip(RoundedCornerShape(11.dp))
                         .clickable {
                             GlobalScope.launch {
@@ -724,6 +727,17 @@ class ChatActivity : ComponentActivity() {
         }
     }
 
+    override fun onResume() {
+        CURRENT_ACTIVITY ="ChatActivity"
+        CURRENT_ACTIVITY_ID =id?:""
+        super.onResume()
+    }
+
+    override fun onStop() {
+        CURRENT_ACTIVITY =""
+        CURRENT_ACTIVITY_ID =""
+        super.onStop()
+    }
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable

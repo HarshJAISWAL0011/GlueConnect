@@ -80,6 +80,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.room.withTransaction
 import com.example.Constants
+import com.example.Constants.CURRENT_ACTIVITY
+import com.example.Constants.CURRENT_ACTIVITY_ID
 import com.example.Constants.MY_ID
 import com.example.chatapplication.GroupPage.GroupListViewModel
 import com.example.chatapplication.GroupPage.GroupVMFactory
@@ -143,6 +145,7 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
     lateinit var groupReop: GroupRepo
     lateinit var channelRepository: ChannelRepo
     val REQUEST_MEDIA_PROJECTION = 34;
+    private val PERMISSION_REQUEST_CODE = 1001
 
 
     @SuppressLint("MissingPermission")
@@ -223,6 +226,8 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
         }
 
 //        MY_ID = "968";
+        CURRENT_ACTIVITY = "MainActivity"
+        CURRENT_ACTIVITY_ID = ""
         database = ChatDatabase.getDatabase(this)
         groupDatabase = GroupDatabase.getDatabase(this)
         channelDatabase = ChannelDatabase.getDatabase(this)
@@ -276,17 +281,68 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
 
         }
 
-
+//        checkPermissions()
         checkStoragePermission()
 
         CoroutineScope(Dispatchers.IO).launch {
             getNewMessageFirestore(MY_ID, database, baseContext)
             resetNotificationSharedPref()
-            requestStoragePermission()
-            createNotificationChannel(this@MainActivity)
+             createNotificationChannel(this@MainActivity)
         }
 
      }
+
+
+    private fun checkPermissions() {
+        // Check if permission is not granted
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            // Request permission
+            Toast.makeText(this,"Requesting permission",Toast.LENGTH_LONG).show()
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(
+                    Manifest.permission.READ_MEDIA_IMAGES,
+                    Manifest.permission.READ_MEDIA_AUDIO
+                ),
+                PERMISSION_REQUEST_CODE
+            )
+        } else {
+            // Permission already granted
+            // Proceed with file operations
+            Toast.makeText(this,"permission granted",Toast.LENGTH_LONG).show()
+
+            performFileOperations()
+        }
+    }
+
+    private fun performFileOperations() {
+        // TODO: Implement file operations here
+
+    }
+
+    // Handle permission request result
+//    override fun onRequestPermissionsResult(
+//        requestCode: Int,
+//        permissions: Array<String>,
+//        grantResults: IntArray
+//    ) {
+//        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+//        if (requestCode == PERMISSION_REQUEST_CODE) {
+//            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+//                // Permission granted, proceed with file operations
+//                performFileOperations()
+//            } else {
+//                // Permission denied, handle accordingly (e.g., show rationale, disable features)
+//                Toast.makeText(this,"  permission denied",Toast.LENGTH_LONG).show()
+//
+//            }
+//        }
+//    }
+
 
     private fun createNotificationChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -310,33 +366,14 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
     }
 
 
-    private fun requestStoragePermission() {
-        if (ContextCompat.checkSelfPermission(
-                this, Manifest.permission.WRITE_EXTERNAL_STORAGE
-            ) != PackageManager.PERMISSION_GRANTED ||
-            ContextCompat.checkSelfPermission(
-                this, Manifest.permission.READ_EXTERNAL_STORAGE
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                    Manifest.permission.READ_EXTERNAL_STORAGE
-                ),
-                WRITE_EXTERNAL_STORAGE_REQUEST_CODE
-            )
-        }
-    }
-
     private fun checkStoragePermission() {
         if ((ContextCompat.checkSelfPermission(this, RTCActivity.READ_STORAGE_PERMISSION)
                     != PackageManager.PERMISSION_GRANTED) &&
             (ContextCompat.checkSelfPermission(this, RTCActivity.WRITE_STORAGE_PERMISSION)
                     != PackageManager.PERMISSION_GRANTED)) {
-            requestStoragePermission()
+             requestStoragePermission()
         } else {
-//            requestStoragePermission()
+//            permission already granted
         }
     }
 
@@ -344,14 +381,14 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
         if (ActivityCompat.shouldShowRequestPermissionRationale(this, RTCActivity.READ_STORAGE_PERMISSION) &&
             ActivityCompat.shouldShowRequestPermissionRationale(this, RTCActivity.WRITE_STORAGE_PERMISSION) &&
             !dialogShown) {
-            showPermissionRationaleDialog()
+             showPermissionRationaleDialog()
         } else {
             ActivityCompat.requestPermissions(this, arrayOf(
                 RTCActivity.READ_STORAGE_PERMISSION,
                 RTCActivity.WRITE_STORAGE_PERMISSION
             ), WRITE_EXTERNAL_STORAGE_REQUEST_CODE
             )
-        }
+         }
     }
 
     private fun showPermissionRationaleDialog() {
@@ -379,9 +416,13 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
         if (requestCode == WRITE_EXTERNAL_STORAGE_REQUEST_CODE) {
             if (grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
                 // Permission granted
+                Toast.makeText(this,"permission granted",Toast.LENGTH_LONG).show()
+
             } else {
                 // Permission denied
                 checkStoragePermission()
+                Toast.makeText(this,"permission denied",Toast.LENGTH_LONG).show()
+
 
             }
         }
@@ -598,7 +639,7 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
                                 CoroutineScope(Dispatchers.IO).launch {
                                     response.body()?.id.let { id ->
                                         groupDatabase.groupDao()
-                                            .insertNewGroup(Group(0, it, id ?: "", 0))
+                                            .insertNewGroup(Group(0,"", it, id ?: "", 0))
 
                                         selectedSenders.forEach() {
                                             groupDatabase.withTransaction {

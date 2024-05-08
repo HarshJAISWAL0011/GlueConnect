@@ -13,6 +13,7 @@ data class Channels(
     val id: Int=0,
     val name: String,
     val channelId: String,
+    val profile_url: String,
     var newMessageCount: Int,
     var description:String,
     var followers: Int,

@@ -10,6 +10,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
  import androidx.compose.foundation.layout.fillMaxSize
@@ -19,8 +20,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -67,12 +71,7 @@ class StartActivity : ComponentActivity() {
         if(userId?.isEmpty()?:true){
             setContent {
                 ChatApplicationTheme {
-                    val systemUiController = rememberSystemUiController()
 
-                    SideEffect {
-//                        systemUiController.isStatusBarVisible = false // Status & Navigation bars
-                    }
-                    // A surface container using the 'background' color from the theme
                     Surface(
                         modifier = Modifier.fillMaxSize(),
                         color = colorResource(id = R.color.background)
@@ -86,6 +85,7 @@ class StartActivity : ComponentActivity() {
     }
 
     override fun onResume() {
+
         val sharedPref = getSharedPreferences(Constants.PREF, MODE_PRIVATE)
         val userId = sharedPref.getString("userId","");
         if(userId?.isNotEmpty()?:false){
@@ -142,15 +142,32 @@ private fun GetStarted(context: Context) {
                      .padding(bottom = 50.dp)
         )
 
-        TextButton(onClick = {
+        Button(onClick = {
                              val intent = Intent(context,LoginActivity::class.java)
             context.startActivity(intent)
-        }, modifier = Modifier
+        },
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = colorResource(id = R.color.background)),
+            modifier = Modifier
             .padding(bottom = 20.dp, start = 10.dp, end = 10.dp)
             .align(Alignment.CenterHorizontally)
             .clip(RoundedCornerShape(20.dp))
-            .background(colorResource(id = R.color.primary))) {
-            Text(text = "Start", color = Color.White, fontSize = 20.sp, modifier = Modifier.padding(horizontal = 80.dp),
+            .border(1.dp, colorResource(id = R.color.primary),RoundedCornerShape(20.dp))        ) {
+            Text(text = "I'm student", color = colorResource(id = R.color.primary), fontSize = 20.sp, modifier = Modifier.padding(horizontal = 80.dp),
+                fontFamily = FontFamily(Font(R.font.robot_slab, FontWeight.W700)) , fontWeight = FontWeight.W900,)
+        }
+
+        Button(onClick = {
+            val intent = Intent(context,LoginActivity::class.java)
+            context.startActivity(intent)
+        },
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = colorResource(id = R.color.background)),
+             modifier = Modifier
+                .padding(bottom = 20.dp, start = 10.dp, end = 10.dp)
+                .align(Alignment.CenterHorizontally)
+                .clip(RoundedCornerShape(20.dp))
+                .border(1.dp, colorResource(id = R.color.primary),RoundedCornerShape(20.dp))
+         ) {
+            Text(text = "Teacher", color = colorResource(id = R.color.primary), fontSize = 20.sp, modifier = Modifier.padding(horizontal = 80.dp),
                 fontFamily = FontFamily(Font(R.font.robot_slab, FontWeight.W700)) , fontWeight = FontWeight.W900,)
         }
     }

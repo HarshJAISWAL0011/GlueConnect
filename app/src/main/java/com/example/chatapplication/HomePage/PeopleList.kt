@@ -61,6 +61,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -75,6 +76,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import coil.request.ErrorResult
+import coil.request.ImageRequest
 import com.example.Constants.MESSAGE_TYPE_AUDIO
 import com.example.Constants.MESSAGE_TYPE_IMAGE
 import com.example.Constants.MY_ID
@@ -97,6 +101,7 @@ import com.example.util.ChannelsWithMessage
 import com.example.util.SendersWithLastMessage
 import com.example.util.util.formatTime
 import com.google.ai.client.generativeai.type.content
+import com.google.android.material.progressindicator.CircularProgressIndicator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -104,6 +109,7 @@ import kotlinx.coroutines.withContext
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import java.io.File
 
 private val fontStyleHeading= TextStyle(
     fontFamily = FontFamily( Font(R.font.josefinsans)),
@@ -132,13 +138,13 @@ fun ChannelList(viewModel: ChannelViewModel, context: Context){
     var channelList by remember { mutableStateOf(mutableStateListOf<ChannelsWithMessage>()) }
 
     var channelType by remember {
-        mutableStateOf("Public Channels")
+        mutableStateOf("Open Clubs")
     }
     LaunchedEffect(allChannels) {
         withContext(Dispatchers.Main) {
             channelList.clear()
             channelList.addAll(joinedPublicChannels)
-            channelType = "Public Channels"
+            channelType = "Open Clubs"
         }
     }
 
@@ -219,6 +225,7 @@ fun ChannelList(viewModel: ChannelViewModel, context: Context){
 
                             var details = SendersWithLastMessage(
                                 it.id,
+                                it.profile_url,
                                 it.name,
                                 it.channelId,
                                 it.messageType,
@@ -260,7 +267,7 @@ fun GroupChatList(viewModel: GroupListViewModel, context: Context){
         LazyColumn (modifier = Modifier.background(color = colorResource(id = R.color.background))){
             items(groupList.value){it->
 
-                var details = SendersWithLastMessage(it.id,it.groupName,it.groupId,it.messageType,it.newMessageCount,it.last_message,it.sentTime)
+                var details = SendersWithLastMessage(it.id,it.profile_url,it.groupName,it.groupId,it.messageType,it.newMessageCount,it.last_message,it.sentTime)
                 ChatItem(details, it.senderName?:"") {
 
                     intent.putExtra("id",it.groupId)
@@ -325,7 +332,28 @@ fun ChatItem(sender: SendersWithLastMessage, lastMsgSender: String, onClick: ()-
             .clickable { onClick() }
             .padding(horizontal = 20.dp, vertical = 20.dp)
     ){
-        Image(painter = painterResource(id = profile_placeholder), contentDescription ="", contentScale = ContentScale.Fit, modifier = Modifier
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(sender.profile_url)
+                .listener(object : ImageRequest.Listener {
+                    override fun onStart(request: ImageRequest) {
+                        // Image loading started
+                    }
+
+                    override fun onError(
+                        request: ImageRequest,
+                        result: ErrorResult
+                    ) {
+                        super.onError(request, result)
+                        println("test error while loading image = ${result.throwable.message}")
+                    }
+
+                    override fun onCancel(request: ImageRequest) {
+                        // Image loading cancelled
+                    }
+                }).build(),
+            placeholder = painterResource(id = profile_placeholder),
+            contentDescription ="", contentScale = ContentScale.Fit, modifier = Modifier
             .size(45.dp)
             .clip(shape = RoundedCornerShape(10.dp))
             .background(Color.Gray)
@@ -577,7 +605,7 @@ fun CreateGroupBottomSheet(senderList: List<Sender>,showSheet:(show: Boolean )->
                     .background(colorResource(id = R.color.background)),
                     verticalArrangement = Arrangement.spacedBy(2.dp),) {
                  items(senderList){
-                     GroupSelectionItem(it.name) { onClick(it) }
+                     GroupSelectionItem(it.name, it.profile_url) { onClick(it) }
                  }
                 }
 
@@ -628,7 +656,7 @@ fun CreateGroupBottomSheet(senderList: List<Sender>,showSheet:(show: Boolean )->
 
 
 @Composable
-private fun GroupSelectionItem(name: String, onClick: () -> Unit){ // indiv. user items shown while creating group
+private fun GroupSelectionItem(name: String,profile_url: String, onClick: () -> Unit){ // indiv. user items shown while creating group
     var isCheck by remember {
         mutableStateOf(false)
     }
@@ -642,7 +670,28 @@ private fun GroupSelectionItem(name: String, onClick: () -> Unit){ // indiv. use
            ,
         verticalAlignment = Alignment.CenterVertically
     ){
-        Image(painter = painterResource(id = profile_placeholder), contentDescription ="", contentScale = ContentScale.Fit, modifier = Modifier
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(profile_url)
+                .listener(object : ImageRequest.Listener {
+                    override fun onStart(request: ImageRequest) {
+                        // Image loading started
+                    }
+
+                    override fun onError(
+                        request: ImageRequest,
+                        result: ErrorResult
+                    ) {
+                        super.onError(request, result)
+                        println("test error while loading image = ${result.throwable.message}")
+                    }
+
+                    override fun onCancel(request: ImageRequest) {
+                        // Image loading cancelled
+                    }
+                }).build(),
+            placeholder = painterResource(id = profile_placeholder),
+            contentDescription ="", contentScale = ContentScale.Fit, modifier = Modifier
             .size(35.dp)
             .clip(shape = RoundedCornerShape(10.dp))
             .background(Color.Gray)
@@ -758,7 +807,7 @@ fun SearchBox( backPressed: ()->Unit,context:Context ){
 
                 items(searchChannelList) {
 
-                    ChannelItem(name = it.name , followers =it.followers.toString() ) {
+                    ChannelItem(name = it.name , followers =it.followers.toString(), it.profileUrl ) {
                         val intent = Intent(context, ChatActivity::class.java)
                         intent.putExtra("id",it.channelId)
                         intent.putExtra("type","public_channel")
@@ -773,7 +822,7 @@ fun SearchBox( backPressed: ()->Unit,context:Context ){
 }
 
 @Composable
-fun ChannelItem(name: String, followers: String, onClick: () -> Unit){ // indiv. user items shown while creating group
+fun ChannelItem(name: String, followers: String, profile_url: String, onClick: () -> Unit){ // indiv. user items shown while creating group
     var isCheck by remember {
         mutableStateOf(false)
     }
@@ -787,10 +836,35 @@ fun ChannelItem(name: String, followers: String, onClick: () -> Unit){ // indiv.
         ,
         verticalAlignment = Alignment.CenterVertically
     ){
-        Image(painter = painterResource(id = profile_placeholder), contentDescription ="", contentScale = ContentScale.Fit, modifier = Modifier
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(profile_url)
+                .listener(object : ImageRequest.Listener {
+                    override fun onStart(request: ImageRequest) {
+                        // Image loading started
+                    }
+
+                    override fun onError(
+                        request: ImageRequest,
+                        result: ErrorResult
+                    ) {
+                         super.onError(request, result)
+                        println("test error while loading image = ${result.throwable.message}")
+                    }
+
+                    override fun onCancel(request: ImageRequest) {
+                        // Image loading cancelled
+                    }
+                }).build(),
+            placeholder = painterResource(id = profile_placeholder),
+            clipToBounds = true,
+            contentDescription ="",
+            contentScale = ContentScale.FillBounds,
+            modifier = Modifier
             .size(45.dp)
             .clip(shape = RoundedCornerShape(10.dp))
-            .background(Color.Gray)
+            .background(Color.Gray),
+
         )
         Spacer(modifier = Modifier.width(20.dp))
 

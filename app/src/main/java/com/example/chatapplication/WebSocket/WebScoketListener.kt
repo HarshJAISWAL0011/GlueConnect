@@ -22,10 +22,14 @@ import com.example.chatapplication.db.groupdb.Group
 import com.example.chatapplication.db.groupdb.GroupDatabase
 import com.example.chatapplication.db.groupdb.GroupMessage
  import com.example.util.NewConnection
+import com.example.util.util.NotifyNewMessage
 import com.example.util.util.URLdownloadFile
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -65,8 +69,6 @@ object webSocketListener : WebSocketListener() {
             val type = jsonObject.getString(Constants.type)
 
 
-
-
             val receivedFrom = jsonObject.getString(Constants.senderId)
             val message = jsonObject.getString(Constants.message)
             val timestamp = jsonObject.getString(Constants.timestamp)
@@ -86,12 +88,14 @@ object webSocketListener : WebSocketListener() {
                     val messageObj = SQLFuntions.getGroupMessageWithID(messageId, context)
 
                     if(groupObj == null ){
-                        groupDatabase.groupDao().insertNewGroup(Group(0,groupName,groupId,0))
+                        // new group
+                        val profile_url = Firebase.firestore.collection(Constants.path_groups).document(groupId).get().await()?.get("profile_url").toString()
+                        groupDatabase.groupDao().insertNewGroup(Group(0,profile_url,groupName,groupId,0))
                     }else
                         groupDatabase.groupDao().updateGroup(groupObj.copy(newMessageCount = groupObj.newMessageCount + 1))
 
                     if(messageObj == null){
-
+                        NotifyNewMessage(context,"New group message received",message, groupId)
                     if(messageType == MESSAGE_TYPE_TEXT)
                     groupDatabase.groupMessageDao()
                         .insertMessage(GroupMessage(messageId,receivedFrom,messageType, message ,1, System.currentTimeMillis(), sentTime ,groupId))
@@ -128,23 +132,28 @@ object webSocketListener : WebSocketListener() {
 
 
 
-
             CoroutineScope(Dispatchers.IO).launch {
 
                 val senderObj = SQLFuntions.getSenderDetails(receivedFrom, context)
                 val messageObj = SQLFuntions.getMessageWithID(messageId, context)
 
-                if (senderObj == null) // new message first time
+                if (senderObj == null) { // new message first time
+                    val profile_url = Firebase.firestore.collection(Constants.path_users).document(receivedFrom).get().await()?.get("profile_url").toString()
                     conversationRepository.insert(
                         Sender(
                             name = receivedFrom,
                             email = receivedFrom,
-                            newMessageCount = 1
+                            newMessageCount = 1,
+                            profile_url =profile_url
                         )
                     )
+                }
                 else if (messageObj == null) { // new message
                     ChatDatabase.getDatabase(context).senderDao()
                         .updateSender(senderObj.copy(newMessageCount = senderObj.newMessageCount + 1))
+
+                    NotifyNewMessage(context,"New message received",message, receivedFrom)
+
                 }
 
                 println("test messageOBj= $messageObj")

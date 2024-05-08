@@ -77,9 +77,9 @@ private val fontStyleSubHeading= TextStyle(
     color = Color.Gray.copy(0.8f)
 )
 
-@Preview(showSystemUi = true)
+
 @Composable
-  fun Header() {
+  fun Header(id:String) {
 
     var desc by remember { mutableStateOf("") }
     var location by remember { mutableStateOf("") }
@@ -89,9 +89,10 @@ private val fontStyleSubHeading= TextStyle(
      var profile_url by remember { mutableStateOf("") }
       val skills = remember { mutableStateListOf<String>() }
 
-    LaunchedEffect (Unit){
+    LaunchedEffect (id){
         GlobalScope.launch {
-            FirestoreDb.getProfileData(Constants.MY_ID).addOnCompleteListener{
+            if(id.isNotEmpty())
+            FirestoreDb.getProfileData(id).addOnCompleteListener{
                 if(it.isSuccessful){
                     val map = it.result
                     if(map.containsKey("description")) desc =(map["description"].toString())
@@ -200,6 +201,7 @@ private val fontStyleSubHeading= TextStyle(
  @Composable
 private fun AboutSection(about: String) {
      Column(modifier = Modifier
+         .fillMaxWidth()
          .padding(top = 15.dp, bottom = 15.dp)
          .background(colorResource(id = R.color.background))
         ) {
@@ -220,6 +222,7 @@ private fun AboutSection(about: String) {
 private fun SkillSection(skills:List<String>) {
 Column(
      modifier = Modifier
+         .fillMaxWidth()
          .padding(top = 15.dp, bottom = 15.dp)
          .background(colorResource(id = R.color.background))
 ) {

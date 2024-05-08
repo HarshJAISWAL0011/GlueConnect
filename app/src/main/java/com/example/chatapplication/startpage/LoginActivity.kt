@@ -146,15 +146,15 @@ class LoginActivity : ComponentActivity() {
 
                     val user = task.result?.user
                     GlobalScope.launch {
-                        Firebase.firestore.collection(path_users).document(user?.uid?:"").set(
+                        Firebase.firestore.collection(path_users).document(phoneNumber).set(
                             hashMapOf(feild_phone to phoneNumber) , SetOptions.merge()
                         )
                     }
                     val sharedPref = getSharedPreferences(PREF, MODE_PRIVATE).edit()
-                    sharedPref.putString("userId",user?.uid)
+                    sharedPref.putString("userId",phoneNumber)
                     sharedPref.putString(feild_phone,phoneNumber)
                         .apply()
-                    MY_ID = user?.uid?:""
+                    MY_ID = phoneNumber
 
                     val intent = Intent(this, MainActivity::class.java)
                     startActivity(intent)

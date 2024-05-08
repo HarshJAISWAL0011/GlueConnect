@@ -34,7 +34,7 @@ interface  ChannelDao {
     @Query("Select * from channels")
     fun getAllChannel(): Flow<List<Channels>>
 
-    @Query("SELECT channels.id, channels.name, channels.channelId, channels.newMessageCount,channels.isAdmin,latest_message.message AS last_message, latest_message.sentTime, latest_message.messageType " +
+    @Query("SELECT channels.id,channels.profile_url, channels.name, channels.channelId, channels.newMessageCount,channels.isAdmin,latest_message.message AS last_message, latest_message.sentTime, latest_message.messageType " +
             "FROM channels " +
             "LEFT JOIN (" +
             "    SELECT channelId, message, sentTime, messageType " +

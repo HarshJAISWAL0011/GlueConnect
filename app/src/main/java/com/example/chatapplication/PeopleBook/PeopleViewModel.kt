@@ -35,7 +35,7 @@ class PeopleViewModel (val database: ChatDatabase, private var conversationRepo:
     }
 
     fun resetNewMessageCount(sender: SendersWithLastMessage){
-        val resetData =Sender(sender.id,sender.name,sender.email,0)
+        val resetData =Sender(sender.id,sender.profile_url,sender.name,sender.email,0)
         viewModelScope.launch { conversationRepo.resetNewMessageCount(resetData) }
     }
 

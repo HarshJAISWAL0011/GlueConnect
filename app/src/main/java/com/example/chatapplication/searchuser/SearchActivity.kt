@@ -71,6 +71,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ErrorResult
 import coil.request.ImageRequest
+import com.example.Constants
 import com.example.chatapplication.ChatPage.ChatActivity
 import com.example.chatapplication.R
 import com.example.chatapplication.firebase.FirestoreDb.getSearchUserList
@@ -144,6 +145,9 @@ class SearchActivity : ComponentActivity() {
                 }
             }
         }
+
+        Constants.CURRENT_ACTIVITY = "SearchActivity"
+        Constants.CURRENT_ACTIVITY_ID = ""
     }
 
      @Composable
@@ -214,6 +218,7 @@ class SearchActivity : ComponentActivity() {
                 modifier = Modifier
                     .clickable {
                         val intent = Intent(context, ProfileActivity::class.java)
+                        intent.putExtra("id", data.id)
                         context.startActivity(intent)
                         onClick()
                     }

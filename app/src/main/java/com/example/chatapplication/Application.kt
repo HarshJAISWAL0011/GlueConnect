@@ -70,7 +70,6 @@ class Application: Application() {
 
         }
     }
-
     private fun initListener()=object : IncomingCallListener {
 
         @SuppressLint("MissingPermission")

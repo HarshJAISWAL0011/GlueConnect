@@ -109,8 +109,10 @@ class RTCActivity : AppCompatActivity() {
         if (intent.hasExtra("isVideoCall"))
             isVideoCall = intent.getBooleanExtra("isVideoCall", true)
 
-        Toast.makeText(this,"callerId = $callerId callee = $calleeId join = $isJoin", Toast.LENGTH_LONG).show()
         Log.d(TAGGER, "callerId = $callerId callee = $calleeId join = $isJoin")
+
+        Constants.CURRENT_ACTIVITY = "RTCActivity"
+        Constants.CURRENT_ACTIVITY_ID = ""
 
             checkCameraAndAudioPermission()
             audioManager.selectAudioDevice(RTCAudioManager.AudioDevice.SPEAKER_PHONE)

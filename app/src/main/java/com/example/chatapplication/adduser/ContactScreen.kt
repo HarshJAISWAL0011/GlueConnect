@@ -52,14 +52,18 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContentResolverCompat
 import androidx.core.content.ContextCompat.getString
 import androidx.core.view.isGone
+import com.example.Constants
 import com.example.chatapplication.ChatPage.ChatActivity
 import com.example.chatapplication.MainActivity
 import com.example.chatapplication.R
 import com.example.chatapplication.db.ChatDatabase
 import com.example.chatapplication.db.Sender
+import com.google.firebase.Firebase
+import com.google.firebase.firestore.firestore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 data class Contact(
     val name: String,
@@ -159,8 +163,9 @@ private fun PopulateItems(contact: Contact, context:Context) {
     ContactItem(contact,{
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                val profile_url = Firebase.firestore.collection(Constants.path_users).document(contact.phoneNumber).get().await()?.get("profile_url").toString()
                 ChatDatabase.getDatabase(context).senderDao()
-                    .insertNewSender(Sender(0, contact.name, contact.phoneNumber, 0))
+                    .insertNewSender(Sender(0, contact.name,profile_url, contact.phoneNumber, 0))
             }catch (e: SQLiteConstraintException){
                 e.printStackTrace()
             }

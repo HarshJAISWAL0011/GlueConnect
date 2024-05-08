@@ -33,6 +33,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.rememberNavController
+import com.example.Constants
 import com.example.chatapplication.InfoPage.ui.theme.ChatApplicationTheme
 import com.example.chatapplication.R
 import com.example.chatapplication.db.ChatDatabase
@@ -213,7 +214,8 @@ class InfoActivity : ComponentActivity() {
             }
         }
 
-
+        Constants.CURRENT_ACTIVITY = "InfoActivity"
+        Constants.CURRENT_ACTIVITY_ID = ""
 
     }
 

@@ -113,14 +113,17 @@ object  FirestoreDb {
                                 )
 
                                 println("message got from fs senderObj =$senderObj $messageObj")
-                                if (senderObj == null) // new message first time
-                                   database.senderDao().insertNewSender(
+                                if (senderObj == null) { // new message first time
+                                    val profile_url = db.collection(path_users).document(id).get().await()?.get("profile_url")
+                                    database.senderDao().insertNewSender(
                                         Sender(
                                             name = message.messageId,
-                                            email =  message.messageId,
-                                            newMessageCount = 1
+                                            email = message.messageId,
+                                            newMessageCount = 1,
+                                            profile_url = profile_url.toString()
                                         )
                                     )
+                                }
                                 else if (messageObj == null) { // new message
                                     database.senderDao()
                                         .updateSender(senderObj.copy(newMessageCount = senderObj.newMessageCount + 1))
@@ -287,7 +290,7 @@ object  FirestoreDb {
             println("search query data =${querySnapshot.documents}")
 
             for (document in querySnapshot.documents) {
-                val data = SearchUserData(document["name"].toString(),document["description"].toString(),document["profile_url"].toString(),"")
+                val data = SearchUserData(document["name"].toString(),document["description"].toString(),document.id,document["profile_url"].toString(),"")
                 data?.connection_status = document.id
                 if(data != null)
                     dataList.add(data)
@@ -305,7 +308,7 @@ object  FirestoreDb {
         val collectionRef = db.collection(path_channels).document(id)
         try {
             val querySnapshot = collectionRef.get().await()
-            val channelData = Channels(0,querySnapshot.get("name").toString(),querySnapshot.id,0,querySnapshot.get("description").toString(),
+            val channelData = Channels(0,querySnapshot.get("name").toString(),querySnapshot.id,querySnapshot.get("profileUrl").toString(),0,querySnapshot.get("description").toString(),
                 querySnapshot.get("followers")?.toString()?.toInt() ?:  0,0,querySnapshot.get("creationDate")?.toString()?.toLong()?:0,
                 querySnapshot.get("channelType")?.toString()?:"")
 
@@ -321,7 +324,8 @@ object  FirestoreDb {
         val collectionRef = db.collection(path_groups).document(id)
         try {
             val querySnapshot = collectionRef.get().await()
-            val groupData = Group(0,querySnapshot.get("name").toString(),querySnapshot.id,0)
+            val groupData = Group(0,querySnapshot.get("profile_url").toString(),
+                querySnapshot.get("name").toString(),querySnapshot.id,0)
 
             return groupData
         }catch (e: Exception) {
@@ -561,6 +565,7 @@ object  FirestoreDb {
             // Retrieve existing phone numbers from Firestore
             val existingPhoneNumbers = mutableListOf<String>()
             for (document in querySnapshot.documents) {
+                println("device phone ${document.get("phone")}")
                 val phoneNumber = document.getString(feild_phone) ?: ""
                 existingPhoneNumbers.add(phoneNumber)
             }

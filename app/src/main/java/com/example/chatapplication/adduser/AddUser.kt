@@ -14,22 +14,16 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.colorResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.example.Constants
 import com.example.chatapplication.R
 import com.example.chatapplication.firebase.FirestoreDb.checkPhoneNumbersInFirestore
 import com.example.chatapplication.ui.theme.ChatApplicationTheme
@@ -43,7 +37,7 @@ class AddUser : ComponentActivity() {
 
     private val CONTACT_PERMISSION_CODE =121
     private var contacts = mutableStateListOf<Contact>()
-    private var showDialogState = mutableStateOf(true)
+    private var showDialogState = mutableStateOf(false)
 
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -65,39 +59,6 @@ class AddUser : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-
-                    LaunchedEffect(Unit) {
-                        CoroutineScope(Dispatchers.IO).launch {
-                            val deviceContacts = retrieveContacts(this@AddUser.contentResolver)
-                            // Sort device contacts by name
-                            val sortedDeviceContacts = deviceContacts.sortedBy { it.name }.distinctBy { it.phoneNumber }
-
-                            // Extract phone numbers from device contacts
-                            val devicePhoneNumbers = sortedDeviceContacts.mapNotNull { it.phoneNumber }
-
-                            val chunkSize = 30
-                            val devicePhoneChunks = devicePhoneNumbers.chunked(chunkSize)
-
-                            // List to hold the combined results from Firestore
-                            val connectedUserPhoneNumbers = mutableListOf<String>()
-
-                            devicePhoneChunks.forEach { phoneChunk ->
-                                val chunkResult = checkPhoneNumbersInFirestore(phoneChunk)
-                                connectedUserPhoneNumbers.addAll(chunkResult)
-                            }
-
-                            sortedDeviceContacts.forEach { contact ->
-                                contact.isConnected = connectedUserPhoneNumbers.contains(contact.phoneNumber)
-                            }
-
-                            val finalSortedContacts0 = sortedDeviceContacts.sortedBy { it.name }
-                            val finalSortedContacts = finalSortedContacts0.sortedBy { !it.isConnected }
-                            contacts.addAll(finalSortedContacts)
-                            showDialogState.value = false
-
-                        }
-                    }
-
                     if (showDialogState.value) {
                         AlertDialog(
                             onDismissRequest = { },
@@ -124,6 +85,9 @@ class AddUser : ComponentActivity() {
             }
         }
         checkContactPermission()
+
+        Constants.CURRENT_ACTIVITY = "AddUser"
+        Constants.CURRENT_ACTIVITY_ID = ""
     }
 
     private fun checkContactPermission() {
@@ -132,6 +96,7 @@ class AddUser : ComponentActivity() {
             requestContactPermission()
         } else {
             // permission already granted
+            retrieveContacts()
          }
     }
 
@@ -162,6 +127,39 @@ class AddUser : ComponentActivity() {
         }
     }
 
+    fun retrieveContacts(){
+        CoroutineScope(Dispatchers.IO).launch {
+            showDialogState.value = true
+            val deviceContacts = retrieveContacts(contentResolver)
+            // Sort device contacts by name
+            val sortedDeviceContacts = deviceContacts.sortedBy { it.name }.distinctBy { it.phoneNumber }
+
+            // Extract phone numbers from device contacts
+            val devicePhoneNumbers = sortedDeviceContacts.mapNotNull { it.phoneNumber }
+
+            val chunkSize = 30
+            val devicePhoneChunks = devicePhoneNumbers.chunked(chunkSize)
+
+            // List to hold the combined results from Firestore
+            val connectedUserPhoneNumbers = mutableListOf<String>()
+
+            devicePhoneChunks.forEach { phoneChunk ->
+                val chunkResult = checkPhoneNumbersInFirestore(phoneChunk)
+                connectedUserPhoneNumbers.addAll(chunkResult)
+            }
+
+            sortedDeviceContacts.forEach { contact ->
+                contact.isConnected = connectedUserPhoneNumbers.contains(contact.phoneNumber)
+            }
+
+            val finalSortedContacts0 = sortedDeviceContacts.sortedBy { it.name }
+            val finalSortedContacts = finalSortedContacts0.sortedBy { !it.isConnected }
+            contacts.addAll(finalSortedContacts)
+            showDialogState.value = false
+
+        }
+
+    }
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<String>,
@@ -172,36 +170,7 @@ class AddUser : ComponentActivity() {
         if (requestCode == CONTACT_PERMISSION_CODE) {
             if (grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
                 // Permission granted
-                CoroutineScope(Dispatchers.IO).launch {
-                    showDialogState.value = true
-                    val deviceContacts = retrieveContacts(this@AddUser.contentResolver)
-                    // Sort device contacts by name
-                    val sortedDeviceContacts = deviceContacts.sortedBy { it.name }.distinctBy { it.phoneNumber }
-
-                    // Extract phone numbers from device contacts
-                    val devicePhoneNumbers = sortedDeviceContacts.mapNotNull { it.phoneNumber }
-
-                    val chunkSize = 30
-                    val devicePhoneChunks = devicePhoneNumbers.chunked(chunkSize)
-
-                    // List to hold the combined results from Firestore
-                    val connectedUserPhoneNumbers = mutableListOf<String>()
-
-                    devicePhoneChunks.forEach { phoneChunk ->
-                        val chunkResult = checkPhoneNumbersInFirestore(phoneChunk)
-                        connectedUserPhoneNumbers.addAll(chunkResult)
-                    }
-
-                    sortedDeviceContacts.forEach { contact ->
-                        contact.isConnected = connectedUserPhoneNumbers.contains(contact.phoneNumber)
-                    }
-
-                    val finalSortedContacts0 = sortedDeviceContacts.sortedBy { it.name }
-                    val finalSortedContacts = finalSortedContacts0.sortedBy { !it.isConnected }
-                    contacts.addAll(finalSortedContacts)
-                    showDialogState.value = false
-
-                }
+                retrieveContacts()
             } else {
                 // Permission denied
                 checkContactPermission()

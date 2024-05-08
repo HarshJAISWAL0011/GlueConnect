@@ -69,6 +69,8 @@ object Constants {
    const val ChannelName ="channel_name"
    const val feild_phone ="phone"
    const val PREF ="preference"
+    var CURRENT_ACTIVITY =""
+   var CURRENT_ACTIVITY_ID =""
 
 }
 

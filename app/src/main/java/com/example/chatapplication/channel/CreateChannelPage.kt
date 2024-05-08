@@ -418,6 +418,7 @@ fun CreateChannelPage(database: ChannelDatabase, onDone: ()-> Unit) {
                                                             0,
                                                             name.value.text,
                                                             it.result,
+                                                            data.profileUrl,
                                                             0,
                                                             desc.value.text,
                                                             0,

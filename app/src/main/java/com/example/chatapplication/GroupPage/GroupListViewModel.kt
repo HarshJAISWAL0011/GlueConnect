@@ -44,7 +44,7 @@ class GroupListViewModel  (val database: GroupDatabase, private var groupRepo: G
     }
 
     fun resetMessageCount(group: GroupSendersWithMessage){
-        val resetData = Group(group.id, group.groupName, group.groupId, 0)
+        val resetData = Group(group.id,group.profile_url, group.groupName, group.groupId, 0)
         viewModelScope.launch { groupRepo.resetMessageCount(resetData) }
     }
 

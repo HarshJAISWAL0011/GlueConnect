@@ -1,14 +1,19 @@
 package com.example.util
 
+import android.app.NotificationManager
 import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.os.Build
 import android.os.Environment
+import android.os.Environment.DIRECTORY_PICTURES
 import android.provider.MediaStore
 import androidx.room.withTransaction
 import com.example.Constants
+import com.example.Constants.CURRENT_ACTIVITY
+import com.example.Constants.CURRENT_ACTIVITY_ID
 import com.example.Constants.MESSAGE_TYPE_AUDIO
 import com.example.Constants.MESSAGE_TYPE_IMAGE
 import com.example.Constants.type
@@ -67,9 +72,15 @@ object util {
     suspend fun saveImageToExternalStorage(path:String, context: Context, uri: Uri,fileName: String) {
 
             try {
-                val imgDir = File(Environment.getExternalStorageDirectory(),path)
+                val imgDir = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    // For Android 10 (API level 29) and above, use MediaStore to save the image
+                    File("${Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)}/Chat/")
+                } else {
+                    // For older versions, use Environment.getExternalStoragePublicDirectory()
+                    Environment.getExternalStoragePublicDirectory("${DIRECTORY_PICTURES}/Chat}")
+                }
                 imgDir.mkdirs()
-                val imageFile = File(imgDir, fileName)
+                val imageFile = File(imgDir.absolutePath, fileName)
 
                 val bitmap =
                     BitmapFactory.decodeStream(context.contentResolver.openInputStream(uri))
@@ -149,8 +160,14 @@ object util {
             }
             val time = System.currentTimeMillis()
             val fileName = "${senderId}_$time.$extension"
-            val directory = Environment.getExternalStorageDirectory()
-            val file = File("$directory/Chat/Received",contentType )
+            val directory =if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                // For Android 10 (API level 29) and above, use MediaStore to save the image
+                File("${Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)}/Chat/")
+            } else {
+                // For older versions, use Environment.getExternalStoragePublicDirectory()
+                Environment.getExternalStoragePublicDirectory("${DIRECTORY_PICTURES}/Chat}")
+            }
+            val file = File("$directory/Received",contentType )
             file.mkdirs()
 
             val filepath = File(file,fileName)
@@ -201,7 +218,11 @@ object util {
         }))
     }
 
+    fun NotifyNewMessage(context: Context, title: String, message: String, senderId: String){
 
+        if(CURRENT_ACTIVITY_ID != senderId)
+        Notification.sendNotification(context, title, message, senderId)
+    }
 
 
 

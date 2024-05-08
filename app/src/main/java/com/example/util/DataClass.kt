@@ -14,6 +14,7 @@ class NewConnection(id:String){
 }
 
 data class SendersWithLastMessage( var id: Int=0,
+                                   var profile_url: String,
                                    var name: String,
                                    var email: String,
                                    val messageType: String? = "text",
@@ -23,6 +24,7 @@ data class SendersWithLastMessage( var id: Int=0,
 
 data class GroupSendersWithMessage(
     var id: Int = 0,
+    var profile_url: String,
     var groupId: String,
     var groupName: String = "",
     var senderName: String?,
@@ -58,12 +60,14 @@ data class ChannelData(
 data class SearchUserData(
     var name: String,
     var desc: String,
+    var id: String,
     var profileUrl: String,
     var connection_status: String = "",
 
 )
 data class ChannelsWithMessage(
     var id: Int = 0,
+    var profile_url: String,
     var channelId: String,
     var name: String = "",
     var messageType: String? = "text",

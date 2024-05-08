@@ -119,7 +119,8 @@ class AccountActivity : ComponentActivity() {
         imageUri.value = sharedPref.getString(PREF_PROFILE,"")?:""
         print("data of imageUri = ${imageUri.value}")
 
-
+        Constants.CURRENT_ACTIVITY = "AccountActivity"
+        Constants.CURRENT_ACTIVITY_ID = ""
     }
 
      @Composable

@@ -35,6 +35,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.Constants
 import com.example.chatapplication.R
 import com.example.chatapplication.channel.ui.theme.ChatApplicationTheme
 import com.example.chatapplication.db.channeldb.ChannelDatabase
@@ -117,6 +118,10 @@ class CreateChannelActivity : ComponentActivity() {
                 }
             }
         }
+
+        Constants.CURRENT_ACTIVITY = "CreateChannelActivity"
+        Constants.CURRENT_ACTIVITY_ID = ""
+
         database = ChannelDatabase.getDatabase(this)
     }
 }
