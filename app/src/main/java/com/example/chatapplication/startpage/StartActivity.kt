@@ -142,32 +142,15 @@ private fun GetStarted(context: Context) {
                      .padding(bottom = 50.dp)
         )
 
-        Button(onClick = {
+        TextButton(onClick = {
                              val intent = Intent(context,LoginActivity::class.java)
             context.startActivity(intent)
-        },
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = colorResource(id = R.color.background)),
-            modifier = Modifier
+        }, modifier = Modifier
             .padding(bottom = 20.dp, start = 10.dp, end = 10.dp)
             .align(Alignment.CenterHorizontally)
             .clip(RoundedCornerShape(20.dp))
-            .border(1.dp, colorResource(id = R.color.primary),RoundedCornerShape(20.dp))        ) {
-            Text(text = "I'm student", color = colorResource(id = R.color.primary), fontSize = 20.sp, modifier = Modifier.padding(horizontal = 80.dp),
-                fontFamily = FontFamily(Font(R.font.robot_slab, FontWeight.W700)) , fontWeight = FontWeight.W900,)
-        }
-
-        Button(onClick = {
-            val intent = Intent(context,LoginActivity::class.java)
-            context.startActivity(intent)
-        },
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = colorResource(id = R.color.background)),
-             modifier = Modifier
-                .padding(bottom = 20.dp, start = 10.dp, end = 10.dp)
-                .align(Alignment.CenterHorizontally)
-                .clip(RoundedCornerShape(20.dp))
-                .border(1.dp, colorResource(id = R.color.primary),RoundedCornerShape(20.dp))
-         ) {
-            Text(text = "Teacher", color = colorResource(id = R.color.primary), fontSize = 20.sp, modifier = Modifier.padding(horizontal = 80.dp),
+            .background(colorResource(id = R.color.primary))) {
+            Text(text = "Start", color = Color.White, fontSize = 20.sp, modifier = Modifier.padding(horizontal = 80.dp),
                 fontFamily = FontFamily(Font(R.font.robot_slab, FontWeight.W700)) , fontWeight = FontWeight.W900,)
         }
     }

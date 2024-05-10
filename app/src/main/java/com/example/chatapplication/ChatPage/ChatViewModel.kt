@@ -18,8 +18,6 @@ class ChatViewModel( var  senderId: String, private val repository: ChatReposito
     init {
         viewModelScope.launch {
         repository.messages.collect {list->
-
-
             _chatListState.value =  list
         }
     }

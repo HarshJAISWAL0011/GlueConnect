@@ -141,15 +141,19 @@ class AddUser : ComponentActivity() {
             val devicePhoneChunks = devicePhoneNumbers.chunked(chunkSize)
 
             // List to hold the combined results from Firestore
-            val connectedUserPhoneNumbers = mutableListOf<String>()
+            val connectedUserPhoneNumbers = mutableMapOf<String,String>()
 
             devicePhoneChunks.forEach { phoneChunk ->
-                val chunkResult = checkPhoneNumbersInFirestore(phoneChunk)
-                connectedUserPhoneNumbers.addAll(chunkResult)
+                val chunkResults = checkPhoneNumbersInFirestore(phoneChunk)
+                chunkResults.forEach {chunkResult->
+                    connectedUserPhoneNumbers.put(chunkResult.first, chunkResult.second)
+                }
             }
 
             sortedDeviceContacts.forEach { contact ->
                 contact.isConnected = connectedUserPhoneNumbers.contains(contact.phoneNumber)
+                if(contact.isConnected)
+                    contact.profile_url = connectedUserPhoneNumbers.get(contact.phoneNumber)?:""
             }
 
             val finalSortedContacts0 = sortedDeviceContacts.sortedBy { it.name }

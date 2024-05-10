@@ -52,6 +52,9 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContentResolverCompat
 import androidx.core.content.ContextCompat.getString
 import androidx.core.view.isGone
+import coil.compose.AsyncImage
+import coil.request.ErrorResult
+import coil.request.ImageRequest
 import com.example.Constants
 import com.example.chatapplication.ChatPage.ChatActivity
 import com.example.chatapplication.MainActivity
@@ -68,7 +71,8 @@ import kotlinx.coroutines.tasks.await
 data class Contact(
     val name: String,
     val phoneNumber: String,
-    var isConnected: Boolean = false
+    var isConnected: Boolean = false,
+    var profile_url: String="",
 )
 
 @Composable
@@ -202,8 +206,39 @@ fun ContactItem(contact: Contact, onClick:() ->Unit, onInvite:()-> Unit) {
         ,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Image(
-            painter = painterResource(id = R.drawable.profile_placeholder),
+        if(contact.profile_url.isEmpty()){
+            Image(
+                painter = painterResource(id = R.drawable.no_profile),
+                contentDescription = "",
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(shape = RoundedCornerShape(10.dp))
+                    .background(Color.Gray)
+            )
+        }
+        else
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(contact.profile_url)
+                .listener(object : ImageRequest.Listener {
+                    override fun onStart(request: ImageRequest) {
+                        // Image loading started
+                    }
+
+                    override fun onError(
+                        request: ImageRequest,
+                        result: ErrorResult
+                    ) {
+                        super.onError(request, result)
+                        println("test error while loading image = ${result.throwable.message}")
+                    }
+
+                    override fun onCancel(request: ImageRequest) {
+                        // Image loading cancelled
+                    }
+                }).build(),
+            placeholder = painterResource(id = R.drawable.no_profile),
             contentDescription = "",
             contentScale = ContentScale.Fit,
             modifier = Modifier
@@ -274,8 +309,7 @@ fun retrieveContacts(contentResolver: ContentResolver): MutableList<Contact> {
             else if(!phoneNumber.startsWith("+91"))
                 phoneNumber = "+91$phoneNumber"
 
-//            val contact = if(phoneNumber == "+919682262005")Contact(name, phoneNumber, true) else Contact(name, phoneNumber)
-            val contact=Contact(name, phoneNumber)
+             val contact=Contact(name, phoneNumber)
             contacts.add(contact)
         }
     }

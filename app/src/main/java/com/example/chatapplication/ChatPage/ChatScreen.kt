@@ -12,6 +12,8 @@ import android.media.MediaRecorder
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.os.Environment.DIRECTORY_MUSIC
+import android.provider.ContactsContract.Directory
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -107,6 +109,7 @@ import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieClipSpec
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
+import com.airbnb.lottie.compose.animateLottieCompositionAsState
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.Constants.EXT_DIR_IMAGE_LOCATION
 import com.example.Constants.MESSAGE_TYPE_AUDIO
@@ -121,9 +124,12 @@ import com.example.chatapplication.db.channeldb.ChannelDatabase
 import com.example.chatapplication.db.channeldb.ChannelMessage
 import com.example.chatapplication.firebase.FirestoreDb
 import com.example.chatapplication.firebase.FirestoreDb.getChannelChats
+import com.example.chatapplication.firebase.FirestoreDb.getNewChannelChats
 import com.example.chatapplication.firebase.FirestoreDb.getOlderChannelChats
 import com.example.util.util
 import com.example.util.util.getMinSecond
+import com.example.util.util.playMessageSendSound
+import com.example.util.util.recordAudioSound
 import com.example.util.util.saveImageToExternalStorage
 import com.google.firebase.firestore.DocumentSnapshot
 import kotlinx.coroutines.CoroutineScope
@@ -257,6 +263,23 @@ fun JoinedChannelChats(
     LaunchedEffect(Unit) {
         list.addAll(chatList.value)
         println("joined channel ${chatList.value}")
+        CoroutineScope(Dispatchers.IO).launch {
+            // retrive messages from remote db and convert into messageObj and store in local db
+           val messageList = getNewChannelChats(id, if(chatList.value.size>0) chatList.value.get(chatList.value.size-1).sentTime else System.currentTimeMillis())
+
+             var result = messageList.mapNotNull { document ->
+                ChannelMessage(document["messageId"].toString(), document["channelId"].toString(), document["messageType"].toString(), document["message"].toString(),
+                    document["timestamp"].toString().toLong())
+            }
+
+            result.forEach {
+                try {
+                    ChannelDatabase.getDatabase(context).channelMsgDao().insertMessage(it)
+                } catch (e: SQLiteConstraintException) {
+                    println("SQLiteConstraintException ${e.printStackTrace()}")
+                }
+            }
+        }
     }
 
     Surface(
@@ -291,7 +314,7 @@ fun JoinedChannelChats(
 
                             list.clear()
                             if(!dbHaveData) return@launch
-                            val oldMessage = viewModel.loadOldMessage()
+                            val oldMessage = viewModel.loadOldMessage() // retrieve old message stored in local db
 
                             list.addAll(oldMessage)
                             Log.d(TAG,"message list size from local DB = ${oldMessage.size}" )
@@ -303,7 +326,7 @@ fun JoinedChannelChats(
                 }
             LaunchedEffect( list.size == 0 && dbHaveData) {
                 // get from db
-               val oldMessage = viewModel.loadOldMessageDB(latestTime)
+               val oldMessage = viewModel.loadOldMessageDB(latestTime) // retrieve old message stored in remote db
                 if(oldMessage.isEmpty()) dbHaveData = false
                 list.addAll(oldMessage)
 
@@ -317,13 +340,12 @@ fun JoinedChannelChats(
                     }
                 }
                 Log.d(TAG,"message list size from firestore = ${oldMessage.size}" )
-//                println("ChatScre ${oldMessage.size} && $dbHaveData")
             }
 
         }
     }
-
 }
+
 
 @Composable
 fun MyChannels(
@@ -541,6 +563,7 @@ fun sendMessageBox(defaultText:String,onSend: (msg: Message)->Unit){
      bottomSheetVisible = remember { mutableStateOf(false) }
      var showAudio by remember { mutableStateOf(true) }
     var isRecording by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
 
 
@@ -626,6 +649,7 @@ fun sendMessageBox(defaultText:String,onSend: (msg: Message)->Unit){
                                         onSend(msg)
                                     }
                                     messageText = ""
+                                    playMessageSendSound(context)
                                 }
 
                         ) {
@@ -645,36 +669,118 @@ fun sendMessageBox(defaultText:String,onSend: (msg: Message)->Unit){
 
                     leadingIcon = {
                         if (showAudio) {
-                        IconButton(onClick = {
-                            isRecording = !isRecording
+                            val rawComposition by rememberLottieComposition(
+                                spec = LottieCompositionSpec.RawRes(
+                                    R.raw.record_audio
+                                )
+                            )
+                            if (isRecording)
+                                LottieAnimation(
+                                    composition = rawComposition,
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clickable {
+                                            isRecording = !isRecording
 
-                            val rootDir = File(Environment.getExternalStorageDirectory(), "/Chat/Audios")
-                            rootDir.mkdirs()
+                                            val rootDir =
+                                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                                    // For Android 10 (API level 29) and above, use MediaStore to save the image
+                                                    File(
+                                                        "${context.getExternalFilesDir(null)}",
+                                                        "Chat/Audios"
+                                                    )
+                                                } else {
+                                                    // For older versions, use Environment.getExternalStoragePublicDirectory()
+                                                    Environment.getExternalStoragePublicDirectory("${DIRECTORY_MUSIC}/Chat/Audios}")
+                                                }
+                                            rootDir.mkdirs()
 
 
-                            if (isRecording) {
-                                val audioFileName = "${MY_ID}_${ System.currentTimeMillis()}.wav"
-                                 audioLocation = File(rootDir,audioFileName)
-                                startRecording(audioLocation!!)
-                            } else {
-                                stopRecording()
-                                val time = System.currentTimeMillis()
+                                            if (isRecording) {
+                                                val audioFileName =
+                                                    "${MY_ID}_${System.currentTimeMillis()}.wav"
+                                                audioLocation = File(rootDir, audioFileName)
+                                                recordAudioSound(context).setOnCompletionListener {
+                                                    startRecording(audioLocation!!)
+                                                }
+                                            } else {
+                                                stopRecording()
+                                                recordAudioSound(context)
+                                                val time = System.currentTimeMillis()
 
-                                val msg = Message("$MY_ID$time",
-                                    sender_group_id?:"",MESSAGE_TYPE_AUDIO,audioLocation.toString()
-                                ,0,time,time)
-                                onSend(msg)
-                            }
-                        }) {
-                            Icon(
+                                                val msg = Message(
+                                                    "$MY_ID$time",
+                                                    sender_group_id ?: "",
+                                                    MESSAGE_TYPE_AUDIO,
+                                                    audioLocation.toString(),
+                                                    0,
+                                                    time,
+                                                    time
+                                                )
+                                                println("audio messaged generated $msg")
+                                                onSend(msg)
+                                            }
+                                        },
+//                                contentScale = ContentScale.Fit,
+                                iterations = Integer.MAX_VALUE,
+                                isPlaying = true,
+                                reverseOnRepeat = true,
+                                clipSpec = LottieClipSpec.Frame(0, 28),
+
+
+                            )
+                            else
+                             Icon(
                                 painter = painterResource(id = R.drawable.audio),
                                 contentDescription = "",
                                 tint = colorResource(
                                     id = R.color.primary
                                 ),
-                                modifier =  Modifier.size(26.dp)
-                            )
-                        }
+                                modifier = Modifier
+                                    .size(26.dp)
+                                    .clickable {
+
+                                        isRecording = !isRecording
+
+
+                                        val rootDir =
+                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                                // For Android 10 (API level 29) and above, use MediaStore to save the image
+                                                File(
+                                                    "${context.getExternalFilesDir(null)}",
+                                                    "Chat/Audios"
+                                                )
+                                            } else {
+                                                // For older versions, use Environment.getExternalStoragePublicDirectory()
+                                                Environment.getExternalStoragePublicDirectory("${DIRECTORY_MUSIC}/Chat/Audios}")
+                                            }
+                                        rootDir.mkdirs()
+
+
+                                        if (isRecording) {
+                                            val audioFileName =
+                                                "${MY_ID}_${System.currentTimeMillis()}.wav"
+                                            audioLocation = File(rootDir, audioFileName)
+                                            recordAudioSound(context).setOnCompletionListener {
+                                                startRecording(audioLocation!!)
+                                            }
+                                        } else {
+                                            stopRecording()
+                                            recordAudioSound(context)
+                                            val time = System.currentTimeMillis()
+
+                                            val msg = Message(
+                                                "$MY_ID$time",
+                                                sender_group_id ?: "",
+                                                MESSAGE_TYPE_AUDIO,
+                                                audioLocation.toString(),
+                                                0,
+                                                time,
+                                                time
+                                            )
+                                            onSend(msg)
+                                        }
+                                    })
                     }else{
                             IconButton(onClick = {}) {
                                 Icon(
@@ -876,7 +982,7 @@ fun ChatBubble(messageObj: Message,senderName: String,isBubbleSelected: Boolean,
                                     }
                                 }).build(),
                             contentDescription = "",
-                            contentScale = ContentScale.Fit,
+                            contentScale = ContentScale.FillBounds,
                             placeholder = painterResource(id = R.drawable.profile_placeholder),
                             error = painterResource(id = R.drawable.delete_illus),
 
@@ -1036,10 +1142,10 @@ fun showBottomSheet(onSend: (msg: Message) -> Unit, context: Context) {
                 if (uri != null) {
                     val imgDir = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         // For Android 10 (API level 29) and above, use MediaStore to save the image
-                        File("${Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)}/Chat/")
+                        File("${Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)}/Chat/Images")
                     } else {
                         // For older versions, use Environment.getExternalStoragePublicDirectory()
-                        Environment.getExternalStoragePublicDirectory("${Environment.DIRECTORY_PICTURES}/Chat}")
+                        Environment.getExternalStoragePublicDirectory("${Environment.DIRECTORY_PICTURES}/Chat/Images}")
                     }
                     imgDir.mkdirs()
                     val timeStamp: String =
@@ -1050,13 +1156,13 @@ fun showBottomSheet(onSend: (msg: Message) -> Unit, context: Context) {
 
                     val time = System.currentTimeMillis()
                     val job = CoroutineScope(Dispatchers.IO).launch {
-                        saveImageToExternalStorage(EXT_DIR_IMAGE_LOCATION,context, uri, fileName)
+                        saveImageToExternalStorage(imgDir.absolutePath,context, uri, fileName)
                     }
                     job.join()
 
                     onSend(
                         Message(
-                            MY_ID + time,userId, "image",
+                            MY_ID + time,userId, MESSAGE_TYPE_IMAGE,
                             "${imageFile.absolutePath}", 0, time, time
                         )
                     )
@@ -1156,6 +1262,7 @@ fun startRecording(audioLocation: File) {
 fun stopRecording() {
     recorder?.apply {
         stop()
+        reset()
         release()
     }
     recorder = null

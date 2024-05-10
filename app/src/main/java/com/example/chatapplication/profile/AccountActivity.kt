@@ -2,6 +2,7 @@ package com.example.chatapplication.profile
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.widget.Button
@@ -60,6 +61,7 @@ import coil.request.ErrorResult
 import coil.request.ImageRequest
 import com.example.Constants
 import com.example.Constants.FOLDER_IMAGES
+import com.example.Constants.FOLDER_PROFILE
 import com.example.Constants.MY_ID
 import com.example.Constants.path_users
 import com.example.chatapplication.R
@@ -133,10 +135,13 @@ class AccountActivity : ComponentActivity() {
          onResult = { uri: Uri? ->
              CoroutineScope(Dispatchers.IO).launch {
                  if (uri != null) {
-                     val imgDir = File(
-                         Environment.getExternalStorageDirectory(),
-                         Constants.EXT_DIR_PROFILE_LOCATION
-                     )
+                     val imgDir = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                         // For Android 10 (API level 29) and above, use MediaStore to save the image
+                         File("${Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)}/Chat/Profile")
+                     } else {
+                         // For older versions, use Environment.getExternalStoragePublicDirectory()
+                         Environment.getExternalStoragePublicDirectory("${Environment.DIRECTORY_PICTURES}/Chat/Profile}")
+                     }
                      imgDir.mkdirs()
                      val timeStamp: String =
                          SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
@@ -146,7 +151,7 @@ class AccountActivity : ComponentActivity() {
 
                      val job = CoroutineScope(Dispatchers.IO).launch {
                          util.saveImageToExternalStorage(
-                             Constants.EXT_DIR_PROFILE_LOCATION,
+                             imgDir.absolutePath,
                              context,
                              uri,
                              fileName
@@ -154,7 +159,7 @@ class AccountActivity : ComponentActivity() {
                      }
                      job.join()
 
-                     util.uploadFile(FOLDER_IMAGES, imageFile.toString())
+                     util.uploadFile(FOLDER_PROFILE, imageFile.toString())
                          .addOnCompleteListener { task ->
                              val downloadUri = task.result
                              Firebase.firestore.collection(path_users).document(MY_ID).set(

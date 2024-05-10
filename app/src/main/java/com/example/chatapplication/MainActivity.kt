@@ -111,6 +111,7 @@ import com.example.chatapplication.db.channeldb.ChannelDatabase
 import com.example.chatapplication.db.groupdb.Group
 import com.example.chatapplication.db.groupdb.GroupDatabase
 import com.example.chatapplication.db.groupdb.GroupMember
+import com.example.chatapplication.firebase.FirestoreDb
 import com.example.chatapplication.firebase.FirestoreDb.addFCMtoken
 import com.example.chatapplication.firebase.FirestoreDb.getInitialData
 import com.example.chatapplication.firebase.FirestoreDb.getNewMessageFirestore
@@ -279,6 +280,11 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
             }
 //            ChannelDatabase.getDatabase(this@MainActivity).channelMsgDao().deleteAllMessageFrom("nbx8nZOOLgOubpJ0I6t8")
 
+//            val messageList = FirestoreDb.getNewChannelChats(
+//                "D3yH8ZDzlX4Rn8lzXtfA",
+//                1715224789550
+//            )
+//            println("message list size extracted from remote db = ${messageList.size} && list = ${messageList}")
         }
 
 //        checkPermissions()
@@ -343,6 +349,11 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
 //        }
 //    }
 
+    override fun onDestroy() {
+        WebSocketClient.webSocket?.cancel()
+        WebSocketClient.webSocket = null
+        super.onDestroy()
+    }
 
     private fun createNotificationChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -380,12 +391,14 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
     private fun requestStoragePermission(dialogShown: Boolean = false) {
         if (ActivityCompat.shouldShowRequestPermissionRationale(this, RTCActivity.READ_STORAGE_PERMISSION) &&
             ActivityCompat.shouldShowRequestPermissionRationale(this, RTCActivity.WRITE_STORAGE_PERMISSION) &&
+            ActivityCompat.shouldShowRequestPermissionRationale(this,RTCActivity.POST_NOTIFICATION_PERMISSION ) &&
             !dialogShown) {
              showPermissionRationaleDialog()
         } else {
             ActivityCompat.requestPermissions(this, arrayOf(
                 RTCActivity.READ_STORAGE_PERMISSION,
-                RTCActivity.WRITE_STORAGE_PERMISSION
+                RTCActivity.WRITE_STORAGE_PERMISSION,
+                RTCActivity.POST_NOTIFICATION_PERMISSION,
             ), WRITE_EXTERNAL_STORAGE_REQUEST_CODE
             )
          }
@@ -420,10 +433,7 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
 
             } else {
                 // Permission denied
-                checkStoragePermission()
                 Toast.makeText(this,"permission denied",Toast.LENGTH_LONG).show()
-
-
             }
         }
     }

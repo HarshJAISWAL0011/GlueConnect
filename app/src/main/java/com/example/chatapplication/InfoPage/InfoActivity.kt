@@ -42,9 +42,12 @@ import com.example.chatapplication.db.channeldb.ChannelDatabase
 import com.example.chatapplication.db.groupdb.GroupDatabase
 import com.example.chatapplication.db.groupdb.GroupMember
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import com.google.firebase.Firebase
+import com.google.firebase.firestore.firestore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 class InfoActivity : ComponentActivity() {
     var id: String? = null
@@ -104,8 +107,11 @@ class InfoActivity : ComponentActivity() {
                             var totalMember by remember { mutableStateOf(0) }
                             var context = LocalContext.current
                             val coroutineScope = rememberCoroutineScope()
+                            var profile_url by remember { mutableStateOf("") }
+
                             LaunchedEffect(Unit) {
                                 coroutineScope.launch(Dispatchers.IO) {
+                                    profile_url = Firebase.firestore.collection(Constants.path_groups).document(id?:"").get().await().get("profile_url")?.toString()?:""
                                     groupDatabase = GroupDatabase.getDatabase(context)
                                     memberList.clear()
                                     memberList.addAll(
@@ -123,6 +129,7 @@ class InfoActivity : ComponentActivity() {
 
                             DetailScreen(
                                 memberList ?: emptyList(),
+                                profile_url,
                                 name ?: "null",
                                 totalMember.toString(),
                                 type!!,
@@ -137,9 +144,11 @@ class InfoActivity : ComponentActivity() {
                             sender = remember { mutableStateOf(null) }
                             val senderState = remember { mutableStateOf<Sender?>(null) }
                             val coroutineScope = rememberCoroutineScope()
+                            var profile_url by remember { mutableStateOf("") }
 
                             LaunchedEffect(Unit) {
                                 coroutineScope.launch(Dispatchers.IO) {
+                                    profile_url = Firebase.firestore.collection(Constants.path_users).document(id?:"").get().await().get("profile_url")?.toString()?:""
 
                                     chatDatabase = ChatDatabase.getDatabase(context)
                                     var senderFlow =
@@ -155,7 +164,7 @@ class InfoActivity : ComponentActivity() {
                                 }
                             }
 
-                            DetailScreen(emptyList(), name, phone, type!!, {
+                            DetailScreen(emptyList(),profile_url, name, phone, type!!, {
                                 changeName(it)
                             }, { super.onBackPressed() },"")
 
@@ -185,8 +194,13 @@ class InfoActivity : ComponentActivity() {
                             var description by remember { mutableStateOf("") }
                             var context = LocalContext.current
                             val coroutineScope = rememberCoroutineScope()
+                            var profile_url by remember {
+                                mutableStateOf("")
+                            }
+
                             LaunchedEffect(Unit) {
                                 coroutineScope.launch(Dispatchers.IO) {
+                                    profile_url = Firebase.firestore.collection(Constants.path_channels).document(id?:"").get().await().get("profileUrl")?.toString()?:""
                                     channelDatabase =ChannelDatabase.getDatabase(context)
 
                                     val channel = channelDatabase.channelsDao().getChannel(id ?: "")
@@ -194,12 +208,11 @@ class InfoActivity : ComponentActivity() {
                                     name = channel?.name ?: ""
                                     totalMember =
                                         channel?.followers ?: 0
-
-
                                 }
                             }
                             DetailScreen(
                                  emptyList(),
+                                profile_url,
                                 name,
                                "$totalMember following",
                                 type!!,

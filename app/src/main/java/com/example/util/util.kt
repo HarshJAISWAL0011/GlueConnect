@@ -1,10 +1,12 @@
 package com.example.util
 
 import android.app.NotificationManager
+import android.content.ContentResolver
 import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -17,6 +19,7 @@ import com.example.Constants.CURRENT_ACTIVITY_ID
 import com.example.Constants.MESSAGE_TYPE_AUDIO
 import com.example.Constants.MESSAGE_TYPE_IMAGE
 import com.example.Constants.type
+import com.example.chatapplication.R
 import com.example.chatapplication.db.channeldb.ChannelMessage
 import com.example.chatapplication.db.groupdb.Group
 import com.example.chatapplication.db.groupdb.GroupMember
@@ -72,22 +75,22 @@ object util {
     suspend fun saveImageToExternalStorage(path:String, context: Context, uri: Uri,fileName: String) {
 
             try {
-                val imgDir = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    // For Android 10 (API level 29) and above, use MediaStore to save the image
-                    File("${Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)}/Chat/")
-                } else {
-                    // For older versions, use Environment.getExternalStoragePublicDirectory()
-                    Environment.getExternalStoragePublicDirectory("${DIRECTORY_PICTURES}/Chat}")
-                }
-                imgDir.mkdirs()
-                val imageFile = File(imgDir.absolutePath, fileName)
+//                val imgDir = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+//                    // For Android 10 (API level 29) and above, use MediaStore to save the image
+//                    File("${Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)}/Chat/")
+//                } else {
+//                    // For older versions, use Environment.getExternalStoragePublicDirectory()
+//                    Environment.getExternalStoragePublicDirectory("${DIRECTORY_PICTURES}/Chat}")
+//                }
+//                imgDir.mkdirs()
+                val imageFile = File(path, fileName)
 
                 val bitmap =
                     BitmapFactory.decodeStream(context.contentResolver.openInputStream(uri))
 
 
                 FileOutputStream(imageFile).use { outputStream ->
-                    bitmap.compress(Bitmap.CompressFormat.JPEG, 5, outputStream)
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 70, outputStream)
                 }
 
                 val contentValues = ContentValues().apply {
@@ -219,11 +222,34 @@ object util {
     }
 
     fun NotifyNewMessage(context: Context, title: String, message: String, senderId: String){
-
         if(CURRENT_ACTIVITY_ID != senderId)
-        Notification.sendNotification(context, title, message, senderId)
+         Notification.sendNotification(context, title, message, senderId)
     }
 
 
+    fun playMessageSendSound(context: Context){
+        var mediaPlayer= MediaPlayer.create(context, R.raw.send_messag_sound)
+        // Check if MediaPlayer is initialized and not playing
+        if (mediaPlayer.isPlaying) {
+            mediaPlayer.seekTo(0) // Reset the MediaPlayer to start
+        }
+        mediaPlayer.start() // Play the tick sound
+        mediaPlayer.setOnCompletionListener {
+            mediaPlayer.release()
+        }
+    }
+
+    fun recordAudioSound(context: Context): MediaPlayer{
+        var mediaPlayer= MediaPlayer.create(context, R.raw.record_audio_sound)
+        // Check if MediaPlayer is initialized and not playing
+        if (mediaPlayer.isPlaying) {
+            mediaPlayer.seekTo(0) // Reset the MediaPlayer to start
+        }
+        mediaPlayer.start() // Play the tick sound
+        mediaPlayer.setOnCompletionListener {
+            mediaPlayer.release()
+        }
+        return mediaPlayer
+    }
 
 }

@@ -292,7 +292,7 @@ object  FirestoreDb {
             for (document in querySnapshot.documents) {
                 val data = SearchUserData(document["name"].toString(),document["description"].toString(),document.id,document["profile_url"].toString(),"")
                 data?.connection_status = document.id
-                if(data != null)
+                if(data != null && data.id != MY_ID)
                     dataList.add(data)
             }
             println(querySnapshot.size())
@@ -367,6 +367,27 @@ object  FirestoreDb {
         println(" getChannelChats data result size =${results.size}  time $latestTime")
         return results
     }
+
+    suspend fun getNewChannelChats(id:String,lastMsgTime: Long):List< DocumentSnapshot>{
+        println(" getChannelChats data =$id ")
+        val db = FirebaseFirestore.getInstance()
+        var ref =
+            db.collection(path_channels).document(id)
+                .collection("messages")
+                .whereGreaterThan("timestamp", lastMsgTime)
+                .orderBy("timestamp", Query.Direction.ASCENDING)
+                .limit(15)
+
+
+        val snapshot = ref.get().await()
+
+
+
+        val results = snapshot.documents
+        println(" getChannelChats data result size =${results.size}  time $lastMsgTime")
+        return results
+    }
+
 
     suspend fun addFCMtoken(token: String){
         Firebase.firestore.collection(path_users).document(MY_ID)
@@ -549,7 +570,7 @@ object  FirestoreDb {
        }
        return result.task
    }
-    suspend fun checkPhoneNumbersInFirestore(phoneNumbersList: List<String>): List<String> {
+    suspend fun checkPhoneNumbersInFirestore(phoneNumbersList: List<String>): List<Pair<String,String>> {
          val db = Firebase.firestore
         val collectionRef = db.collection(path_users)
         println("device phone ")
@@ -563,11 +584,12 @@ object  FirestoreDb {
             println("device phone ${querySnapshot.documents}")
 
             // Retrieve existing phone numbers from Firestore
-            val existingPhoneNumbers = mutableListOf<String>()
+            val existingPhoneNumbers = mutableListOf<Pair<String,String>>()
             for (document in querySnapshot.documents) {
                 println("device phone ${document.get("phone")}")
                 val phoneNumber = document.getString(feild_phone) ?: ""
-                existingPhoneNumbers.add(phoneNumber)
+                val profile_url = document.getString("profile_url") ?: ""
+                existingPhoneNumbers.add(Pair(phoneNumber,profile_url))
             }
 
             return existingPhoneNumbers

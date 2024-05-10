@@ -2,6 +2,7 @@ package com.example.chatapplication.channel
 
 import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
+import android.os.Build
 import android.os.Environment
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -108,7 +109,7 @@ val customFontFamily = FontFamily(
 fun CreateChannelPage(database: ChannelDatabase, onDone: ()-> Unit) {
 
      val name = remember { mutableStateOf(TextFieldValue("")) }
-    val options = listOf("Select channel type", "News", "Education","Entertainment","Others")
+    val options = listOf("Select club type", "News", "Education","Entertainment","Others")
     var selectedIndex by remember { mutableStateOf(0) }
     var nameError by remember { mutableStateOf(false) }
     var descError by remember { mutableStateOf(false) }
@@ -291,7 +292,7 @@ fun CreateChannelPage(database: ChannelDatabase, onDone: ()-> Unit) {
                     },
                     maxLines = 1,
                     enabled = false,
-                    placeholder = { Text(text = "Select channel type") },
+                    placeholder = { Text(text = "Select club type") },
                     colors = TextFieldDefaults.textFieldColors(
                         textColor = Color.Black.copy(0.8f),
                         backgroundColor = Color.Transparent,
@@ -379,16 +380,19 @@ fun CreateChannelPage(database: ChannelDatabase, onDone: ()-> Unit) {
                                             Locale.getDefault()
                                         ).format(Date())
                                     val fileName = "JPEG_${timeStamp}.jpeg"
-                                    val dir = File(
-                                        Environment.getExternalStorageDirectory(),
-                                        EXT_DIR_PROFILE_LOCATION
-                                    )
-
+                                    val dir  = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                        // For Android 10 (API level 29) and above, use MediaStore to save the image
+                                        File("${Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)}/Chat/Images")
+                                    } else {
+                                        // For older versions, use Environment.getExternalStoragePublicDirectory()
+                                        Environment.getExternalStoragePublicDirectory("${Environment.DIRECTORY_PICTURES}/Chat/Images}")
+                                    }
+                                    dir.mkdirs()
                                     val file = File(dir, fileName)
 
                                     var job = CoroutineScope(Dispatchers.IO).launch {
                                         util.saveImageToExternalStorage(
-                                            EXT_DIR_PROFILE_LOCATION, context,
+                                            dir.absolutePath, context,
                                             uri!!, fileName
                                         )
                                     }

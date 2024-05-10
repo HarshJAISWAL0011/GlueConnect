@@ -47,6 +47,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
@@ -63,6 +64,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.DpOffset
@@ -71,15 +73,22 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.ViewModelProvider
 import androidx.room.withTransaction
+import coil.compose.AsyncImage
+import coil.request.ErrorResult
+import coil.request.ImageRequest
 import com.example.Constants
 import com.example.Constants.CURRENT_ACTIVITY
 import com.example.Constants.CURRENT_ACTIVITY_ID
 import com.example.Constants.EXT_DIR_IMAGE_CHANNEL_LOCATION
+import com.example.Constants.FOLDER_IMAGES
 import com.example.Constants.INCOMING_AUDIO_CALL
 import com.example.Constants.INCOMING_VIDEO_CALL
 import com.example.Constants.MESSAGE_TYPE_IMAGE
 import com.example.Constants.MY_ID
 import com.example.Constants.channels_joined
+import com.example.Constants.path_channels
+import com.example.Constants.path_groups
+import com.example.Constants.path_users
 import com.example.chatapplication.GroupPage.GroupChatVMFactory
 import com.example.chatapplication.GroupPage.GroupChatViewModel
 import com.example.chatapplication.InfoPage.InfoActivity
@@ -116,6 +125,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import java.io.File
 
 class ChatActivity : ComponentActivity() {
 
@@ -223,7 +233,7 @@ class ChatActivity : ComponentActivity() {
                                             val clipData = ClipData.newPlainText("Copied Text", it)
                                               clipboardManager.setPrimaryClip(clipData)
 
-                                             Toast.makeText(this, "Text copied to clipboard", Toast.LENGTH_SHORT).show()
+                                             Toast.makeText(this, "Copied to clipboard", Toast.LENGTH_SHORT).show()
 
                                         },
                                         {
@@ -394,7 +404,7 @@ class ChatActivity : ComponentActivity() {
 
                                             } else {
                                                 // add new Message
-                                                println("message id = ${it.messageId} \n ${it.toString()}")
+                                                println("message id = ${it.messageId} \n ${it}")
                                                 val messageId =
                                                     "${System.currentTimeMillis()}$id"
                                                 val message = ChannelMessageData(
@@ -412,7 +422,7 @@ class ChatActivity : ComponentActivity() {
                                                 )
                                                 if(message.messageType == MESSAGE_TYPE_IMAGE) {
                                                     util.uploadFile(
-                                                        EXT_DIR_IMAGE_CHANNEL_LOCATION,
+                                                        FOLDER_IMAGES,
                                                         message.message
                                                     )
                                                         .addOnCompleteListener { task ->
@@ -600,6 +610,18 @@ class ChatActivity : ComponentActivity() {
     @Composable
     private fun TopBarDesign(type: String?) {
         val intent = Intent(this,InfoActivity::class.java)
+        var profile_url by remember {
+            mutableStateOf("")
+        }
+        LaunchedEffect( Unit) {
+            if(type?.contains("channel") == true)
+                profile_url =Firebase.firestore.collection(path_channels).document(id?:"").get().await().get("profileUrl")?.toString()?:""
+            else if(type == "individual")
+              profile_url =Firebase.firestore.collection(path_users).document(id?:"").get().await().get("profile_url")?.toString()?:""
+            else if(type == "group")
+                profile_url =Firebase.firestore.collection(path_groups).document(id?:"").get().await().get("profile_url")?.toString()?:""
+
+        }
 
         Column() {
             Row(
@@ -617,9 +639,29 @@ class ChatActivity : ComponentActivity() {
                         .size(28.dp)
                         .clickable { super.onBackPressed() }
                 )
-                Image(
-                    painter = painterResource(id = R.drawable.profile_placeholder),
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(profile_url)
+                        .listener(object : ImageRequest.Listener {
+                            override fun onStart(request: ImageRequest) {
+                                // Image loading started
+                            }
+
+                            override fun onError(
+                                request: ImageRequest,
+                                result: ErrorResult
+                            ) {
+                                super.onError(request, result)
+                                println("test error while loading image = ${result.throwable.message}")
+                            }
+
+                            override fun onCancel(request: ImageRequest) {
+                                // Image loading cancelled
+                            }
+                        }).build(),
+                    placeholder = painterResource(id = R.drawable.profile_placeholder),
                     contentDescription = "",
+                    contentScale = ContentScale.FillBounds,
                     modifier = Modifier
                         .size(42.dp)
                         .clip(RoundedCornerShape(10.dp))
@@ -633,6 +675,8 @@ class ChatActivity : ComponentActivity() {
                     .clickable {
                         intent.putExtra("type", type)
                         intent.putExtra("id", id)
+                        if(type?.contains("channel") == true)
+                            intent.putExtra("type","channel")
                         startActivity(intent)
                     }
                     .weight(1f)) {

@@ -48,6 +48,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -61,6 +63,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import coil.compose.AsyncImage
+import coil.request.ErrorResult
+import coil.request.ImageRequest
 import com.example.chatapplication.R
 import com.example.chatapplication.db.groupdb.GroupMember
 
@@ -69,6 +74,7 @@ import com.example.chatapplication.db.groupdb.GroupMember
 @Composable
  fun DetailScreen(
     member: List<GroupMember>,
+    profile_url: String,
     nameText: String,
     phone: String,
     type: String,
@@ -104,8 +110,28 @@ import com.example.chatapplication.db.groupdb.GroupMember
                 }
 
 
-                Image(
-                    painter = painterResource(id = R.drawable.profile_placeholder),
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(profile_url)
+                        .listener(object : ImageRequest.Listener {
+                            override fun onStart(request: ImageRequest) {
+                                // Image loading started
+                            }
+
+                            override fun onError(
+                                request: ImageRequest,
+                                result: ErrorResult
+                            ) {
+                                super.onError(request, result)
+                                println("test error while loading image = ${result.throwable.message}")
+                            }
+
+                            override fun onCancel(request: ImageRequest) {
+                                // Image loading cancelled
+                            }
+                        }).build(),
+                    placeholder =  painterResource(id = R.drawable.profile_placeholder),
+                    contentScale = ContentScale.FillBounds,
                     contentDescription = "",
                     modifier = Modifier
                         .clip(CircleShape)
@@ -395,15 +421,14 @@ import com.example.chatapplication.db.groupdb.GroupMember
                 }
             }
         )
-    }
-            else if(type == "channel"){
-//                Text(
-//                    text = "Description",
-//                    fontFamily = FontFamily(Font(R.font.josefinsans)),
-//                    modifier = Modifier.padding(start = 20.dp, top =20.dp, ),
-//                    color = Color.Black.copy(0.6f),
-//                    fontSize = 18.sp
-//                    )
+    }else if(type == "channel"){
+                Text(
+                    text = "Description",
+                    fontFamily = FontFamily(Font(R.font.josefinsans)),
+                    modifier = Modifier.padding(start = 20.dp, top =20.dp, ),
+                    color = Color.Black.copy(0.6f),
+                    fontSize = 18.sp
+                    )
              Text(text = description,  fontWeight = W400, fontSize = 19.sp, color = Color.Black.copy(0.6f),
                  modifier= Modifier.padding(20.dp))
     }

@@ -89,6 +89,7 @@ import com.example.chatapplication.ChatPage.ChatActivity
 import com.example.chatapplication.GroupPage.GroupListViewModel
 import com.example.chatapplication.MainActivity
 import com.example.chatapplication.PeopleBook.PeopleViewModel
+import com.example.chatapplication.R.drawable.no_profile
 import com.example.chatapplication.adduser.AddUser
 import com.example.chatapplication.channel.ChannelViewModel
 import com.example.chatapplication.db.Sender
@@ -352,8 +353,10 @@ fun ChatItem(sender: SendersWithLastMessage, lastMsgSender: String, onClick: ()-
                         // Image loading cancelled
                     }
                 }).build(),
-            placeholder = painterResource(id = profile_placeholder),
-            contentDescription ="", contentScale = ContentScale.Fit, modifier = Modifier
+            placeholder = painterResource(id = no_profile),
+            contentDescription ="",
+            contentScale = ContentScale.FillBounds,
+            modifier = Modifier
             .size(45.dp)
             .clip(shape = RoundedCornerShape(10.dp))
             .background(Color.Gray)
@@ -366,6 +369,7 @@ fun ChatItem(sender: SendersWithLastMessage, lastMsgSender: String, onClick: ()-
         {
             Text(
                 text = sender.name,
+                maxLines = 1,
                 style = if (sender.newMessageCount == 0) fontStyleHeading else fontStyleHeadingNewMsg,
             )
             Spacer(modifier = Modifier.height(7.dp))
@@ -690,8 +694,8 @@ private fun GroupSelectionItem(name: String,profile_url: String, onClick: () -> 
                         // Image loading cancelled
                     }
                 }).build(),
-            placeholder = painterResource(id = profile_placeholder),
-            contentDescription ="", contentScale = ContentScale.Fit, modifier = Modifier
+            placeholder = painterResource(id = no_profile),
+            contentDescription ="", contentScale = ContentScale.FillBounds, modifier = Modifier
             .size(35.dp)
             .clip(shape = RoundedCornerShape(10.dp))
             .background(Color.Gray)
@@ -856,7 +860,7 @@ fun ChannelItem(name: String, followers: String, profile_url: String, onClick: (
                         // Image loading cancelled
                     }
                 }).build(),
-            placeholder = painterResource(id = profile_placeholder),
+            placeholder = painterResource(id = no_profile),
             clipToBounds = true,
             contentDescription ="",
             contentScale = ContentScale.FillBounds,

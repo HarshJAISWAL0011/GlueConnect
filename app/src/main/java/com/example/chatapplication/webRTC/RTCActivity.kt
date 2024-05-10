@@ -46,6 +46,7 @@ class RTCActivity : AppCompatActivity() {
         private const val AUDIO_PERMISSION = Manifest.permission.RECORD_AUDIO
         const val READ_STORAGE_PERMISSION = Manifest.permission.READ_EXTERNAL_STORAGE
         const val WRITE_STORAGE_PERMISSION = Manifest.permission.WRITE_EXTERNAL_STORAGE
+        const val POST_NOTIFICATION_PERMISSION = Manifest.permission.POST_NOTIFICATIONS
         const val READ_CONTACT_PERMISSION = Manifest.permission.READ_CONTACTS
          const val TAGGER = "Check:"
          var isJoin = false
