@@ -6,14 +6,14 @@ plugins {
 }
 
 android {
-    namespace = "com.example.chatapplication"
+    namespace = "com.apexharn.chatapplication"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.chatapplication"
+        applicationId = "com.apexharn.chatapplication"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
+        versionCode = 3
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -110,6 +110,7 @@ dependencies {
     implementation("com.google.firebase:firebase-storage")
     implementation("com.airbnb.android:lottie-compose:6.0.1")
     implementation ("com.mesibo.api:webrtc:1.0.5")
+//    implementation ("com.dafruits:webrtc:123.0.0")
     implementation( "androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("com.google.firebase:firebase-auth")
     implementation ("com.github.mukeshsolanki.android-otpview-pinview:otpview-compose:3.1.0")

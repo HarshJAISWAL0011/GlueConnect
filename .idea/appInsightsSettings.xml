@@ -8,8 +8,8 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="com.example.chatapplication" />
-                  <option name="mobileSdkAppId" value="1:846391556497:android:4f97f3d1dee946c93d0230" />
+                  <option name="appId" value="com.apexharn.chatapplication" />
+                  <option name="mobileSdkAppId" value="1:846391556497:android:7d90406e71a4e3353d0230" />
                   <option name="projectId" value="chat-e34cc" />
                   <option name="projectNumber" value="846391556497" />
                 </ConnectionSetting>
