@@ -432,7 +432,7 @@ class MainActivity : ComponentActivity(), IncomingCallListener {
 
             } else {
                 // Permission denied
-                Toast.makeText(this,"permission denied",Toast.LENGTH_LONG).show()
+//                Toast.makeText(this,"permission denied",Toast.LENGTH_LONG).show()
             }
         }
     }

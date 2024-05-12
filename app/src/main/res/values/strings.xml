@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Chat Application</string>
+    <string name="app_name">Glue Connect</string>
     <string name="title_activity_chat">ChatActivity</string>
     <string name="message_notification_channel_id">10</string>
     <string name="title_activity_show_image">ShowImage</string>

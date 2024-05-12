@@ -320,14 +320,14 @@ class ChatActivity : ComponentActivity() {
                                         selectedMessageListSize.value++
                                     }, defaultText.value,
                                     {
-                                        // update message
                                         GlobalScope.launch {
+                                            // update message
                                             if (selectedMessageListSize.value > 0) {
                                                 var msg = selectedMessageList.get(0)
                                                     .copy(message = it.message)
                                                 chatViewModel.updateMessage(msg)
                                             } else {
-
+                                                // new message
                                                 println("message id = ${it.messageId} \n ${it.toString()}")
                                                 chatViewModel.addMessage(it)
                                             }

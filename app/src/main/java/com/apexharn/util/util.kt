@@ -136,7 +136,7 @@ object util {
          }
     }
 
-    suspend fun URLdownloadFile(link: String, messageType: String, senderId: String): File?{
+    suspend fun URLdownloadFile(link: String, messageType: String, senderId: String,context: Context): File?{
         try {
             val url = URL(link)
             val contentType = when(messageType){
@@ -152,12 +152,15 @@ object util {
             }
             val time = System.currentTimeMillis()
             val fileName = "${senderId}_$time.$extension"
-            val directory =if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val directory = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 // For Android 10 (API level 29) and above, use MediaStore to save the image
-                File("${Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)}/Chat/")
+                File(
+                    "${context.getExternalFilesDir(null)}",
+                    "Chat/Audios"
+                )
             } else {
                 // For older versions, use Environment.getExternalStoragePublicDirectory()
-                Environment.getExternalStoragePublicDirectory("${DIRECTORY_PICTURES}/Chat}")
+                Environment.getExternalStoragePublicDirectory("${Environment.DIRECTORY_MUSIC}/Chat/Audios}")
             }
             val file = File("$directory/Received",contentType )
             file.mkdirs()

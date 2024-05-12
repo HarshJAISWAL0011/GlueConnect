@@ -13,6 +13,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.Surface
@@ -37,6 +38,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -296,7 +298,12 @@ class LoginActivity : ComponentActivity() {
                             cursorColor = colorResource(id = R.color.primary).copy(0.7f),
                             backgroundColor = Color.Transparent
                         ),
-                        keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+                        keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = {
+                             onSendClicked("+91$phoneNumber", context as Activity)
+                            isOtpView.value = !isOtpView.value
+                        }),
+
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -380,7 +387,8 @@ class LoginActivity : ComponentActivity() {
                             otpText = otpValue,
                             onOtpTextChange = {
                                 otpValue = it
-                                Log.d("Actual Value", otpValue)
+                                if(otpValue.length == 6)
+                                  optEntered(otpValue)
                             },
                             type = OTP_VIEW_TYPE_BORDER,
                             otpCount = 6,

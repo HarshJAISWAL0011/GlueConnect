@@ -113,6 +113,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.IOException
@@ -656,46 +657,10 @@ fun sendMessageBox(defaultText:String,onSend: (msg: Message)->Unit){
                                     modifier = Modifier
                                         .size(40.dp)
                                         .clickable {
+                                            // stop recording
+                                            audioRecordingHandler(false,onSend)
                                             isRecording = !isRecording
 
-                                            val rootDir =
-                                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                                                    // For Android 10 (API level 29) and above, use MediaStore to save the image
-                                                    File(
-                                                        "${context.getExternalFilesDir(null)}",
-                                                        "Chat/Audios"
-                                                    )
-                                                } else {
-                                                    // For older versions, use Environment.getExternalStoragePublicDirectory()
-                                                    Environment.getExternalStoragePublicDirectory("${DIRECTORY_MUSIC}/Chat/Audios}")
-                                                }
-                                            rootDir.mkdirs()
-
-
-                                            if (isRecording) {
-                                                val audioFileName =
-                                                    "${MY_ID}_${System.currentTimeMillis()}.wav"
-                                                audioLocation = File(rootDir, audioFileName)
-                                                recordAudioSound(context).setOnCompletionListener {
-                                                    startRecording(audioLocation!!)
-                                                }
-                                            } else {
-                                                stopRecording()
-                                                recordAudioSound(context)
-                                                val time = System.currentTimeMillis()
-
-                                                val msg = Message(
-                                                    "$MY_ID$time",
-                                                    sender_group_id ?: "",
-                                                    MESSAGE_TYPE_AUDIO,
-                                                    audioLocation.toString(),
-                                                    0,
-                                                    time,
-                                                    time
-                                                )
-                                                println("audio messaged generated $msg")
-                                                onSend(msg)
-                                            }
                                         },
 //                                contentScale = ContentScale.Fit,
                                 iterations = Integer.MAX_VALUE,
@@ -715,47 +680,10 @@ fun sendMessageBox(defaultText:String,onSend: (msg: Message)->Unit){
                                 modifier = Modifier
                                     .size(26.dp)
                                     .clickable {
-
+                                        // start recording
+                                        audioRecordingHandler(true,onSend)
                                         isRecording = !isRecording
 
-
-                                        val rootDir =
-                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                                                // For Android 10 (API level 29) and above, use MediaStore to save the image
-                                                File(
-                                                    "${context.getExternalFilesDir(null)}",
-                                                    "Chat/Audios"
-                                                )
-                                            } else {
-                                                // For older versions, use Environment.getExternalStoragePublicDirectory()
-                                                Environment.getExternalStoragePublicDirectory("${DIRECTORY_MUSIC}/Chat/Audios}")
-                                            }
-                                        rootDir.mkdirs()
-
-
-                                        if (isRecording) {
-                                            val audioFileName =
-                                                "${MY_ID}_${System.currentTimeMillis()}.wav"
-                                            audioLocation = File(rootDir, audioFileName)
-                                            recordAudioSound(context).setOnCompletionListener {
-                                                startRecording(audioLocation!!)
-                                            }
-                                        } else {
-                                            stopRecording()
-                                            recordAudioSound(context)
-                                            val time = System.currentTimeMillis()
-
-                                            val msg = Message(
-                                                "$MY_ID$time",
-                                                sender_group_id ?: "",
-                                                MESSAGE_TYPE_AUDIO,
-                                                audioLocation.toString(),
-                                                0,
-                                                time,
-                                                time
-                                            )
-                                            onSend(msg)
-                                        }
                                     })
                     }else{
                             IconButton(onClick = {}) {
@@ -937,9 +865,10 @@ fun ChatBubble(messageObj: Message,senderName: String,isBubbleSelected: Boolean,
                             .padding(start = 4.dp, top = 5.dp, end = 4.dp, bottom = 5.dp)
                     ) {
 
+                        val imgLocation = if(messageObj.message.contains("https:")){ messageObj.message} else (File(messageObj.message))
                         AsyncImage(
                             model = ImageRequest.Builder(LocalContext.current)
-                                .data(File(messageObj.message))
+                                .data(imgLocation)
                                 .listener(object : ImageRequest.Listener {
                                     override fun onStart(request: ImageRequest) {
                                         // Image loading started
@@ -988,20 +917,24 @@ fun ChatBubble(messageObj: Message,senderName: String,isBubbleSelected: Boolean,
                 var lottieFile = if (isReceived) LottieCompositionSpec.RawRes(R.raw.wave_lottie2) else LottieCompositionSpec.RawRes(R.raw.wave_lottie)
 
 
-                LaunchedEffect(Unit ){
+                LaunchedEffect(messageObj.message ){
+                    // TODO logic to store audio duration along with audio location. This makes app slow
                     try {
                         mediaPlayer = MediaPlayer().apply {
                             setDataSource(File(messageObj.message).toString())
                             prepare()
                         }
                         audioDuration = mediaPlayer?.duration ?: 0
-                        mediaPlayer?.setOnCompletionListener {mp ->
-                                isPlaying = false
-                                audioPosition = 0
-                                mp.seekTo(0)
-                            lottieIteration = 0
+                        mediaPlayer = null
+//                        mediaPlayer?.setOnCompletionListener {mp ->
+//                                isPlaying = false
+//                                audioPosition = 0
+//                                mp.seekTo(0)
+//                            lottieIteration = 0
+//
+//                        }
 
-                        }
+
 
                     }catch (e: FileNotFoundException){println("Exception while playing ${e.message}")}
                     catch (e: ClassCastException){println("Exception while playing ${e.message}")}
@@ -1043,9 +976,35 @@ fun ChatBubble(messageObj: Message,senderName: String,isBubbleSelected: Boolean,
                         IconButton(onClick = {
 
                             if(mediaPlayer == null){
-                                Toast.makeText(context,"Something went wrong",Toast.LENGTH_LONG).show()
+                                try {
+                                    mediaPlayer = MediaPlayer().apply {
+                                        setDataSource(File(messageObj.message)?.toString())
+                                        prepare()
+                                    }
+                                    audioDuration = mediaPlayer?.duration ?: 0
+                                    mediaPlayer?.setOnCompletionListener {mp ->
+                                        isPlaying = false
+                                        audioPosition = 0
+                                        mp.seekTo(0)
+                                        lottieIteration = 0
+
+                                    }
+
+
+                                }catch (e: FileNotFoundException){println("Exception while playing ${e.message}")
+                                    Toast.makeText(context,"File not found",Toast.LENGTH_LONG).show()
+                                    return@IconButton
+                                }
+                                catch (e: ClassCastException){println("Exception while playing ${e.message}")
+                                    Toast.makeText(context,"Something went wrong",Toast.LENGTH_LONG).show()
+                                    return@IconButton
+                                }
+                                catch (e: IOException){println("Exception while playing ${e.message}")
+                                    Toast.makeText(context,"Permission not granted",Toast.LENGTH_LONG).show()
+                                    return@IconButton
+                                }
                             }
-                             else if (!isPlaying ) {
+                              if (!isPlaying ) {
                                 mediaPlayer?.start()
                                 isPlaying = true
                                 lottieIteration = Integer.MAX_VALUE
@@ -1221,6 +1180,41 @@ fun showBottomSheet(onSend: (msg: Message) -> Unit, context: Context) {
 }
 
 
+fun audioRecordingHandler(record: Boolean, onSend: (msg: Message) -> Unit) {
+    val rootDir =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            File("${context.getExternalFilesDir(null)}", "Chat/Audios")
+        } else {
+            Environment.getExternalStoragePublicDirectory("${DIRECTORY_MUSIC}/Chat/Audios}")
+        }
+    rootDir.mkdirs()
+
+    if (record) {
+        val audioFileName =
+            "${MY_ID}_${System.currentTimeMillis()}.wav"
+        audioLocation = File(rootDir, audioFileName)
+        recordAudioSound(context).setOnCompletionListener {
+            startRecording(audioLocation!!)
+        }
+    } else {
+        println("Stop sound record")
+        stopRecording()
+        recordAudioSound(context)
+        val time = System.currentTimeMillis()
+
+        val msg = Message(
+            "$MY_ID$time",
+            sender_group_id ?: "",
+            MESSAGE_TYPE_AUDIO,
+            audioLocation.toString(),
+            0,
+            time,
+            time
+        )
+        onSend(msg)
+    }
+}
+
 fun startRecording(audioLocation: File) {
     try {
     recorder = MediaRecorder().apply {
@@ -1228,7 +1222,11 @@ fun startRecording(audioLocation: File) {
         setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP)
         setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB)
         setOutputFile(audioLocation.absolutePath)
-        prepare()
+        try{
+            prepare()
+        }catch (e: IOException){
+            Log.e("ChatScreen","${e.printStackTrace()}")
+        }
         start()
     }
     }catch (e: FileNotFoundException){println("Exception ${e.message}")}
@@ -1238,7 +1236,6 @@ fun startRecording(audioLocation: File) {
 fun stopRecording() {
     recorder?.apply {
         stop()
-        reset()
         release()
     }
     recorder = null

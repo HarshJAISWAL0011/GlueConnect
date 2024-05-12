@@ -123,7 +123,8 @@ object  FirestoreDb {
                                         val file = URLdownloadFile(
                                             message.message,
                                             message.messageType?:"Image",
-                                            message.senderId
+                                            message.senderId,
+                                            context
                                         )
                                         println("location of saving file = ${file.toString()}")
                                         var location = ""

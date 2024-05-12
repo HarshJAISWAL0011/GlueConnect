@@ -101,7 +101,7 @@ object webSocketListener : WebSocketListener() {
                         .insertMessage(GroupMessage(messageId,receivedFrom,messageType, message ,1, System.currentTimeMillis(), sentTime ,groupId))
 
                     else if(messageType == MESSAGE_TYPE_IMAGE || messageType == MESSAGE_TYPE_AUDIO){
-                        val file = URLdownloadFile(message, messageType, receivedFrom)
+                        val file = URLdownloadFile(message, messageType, receivedFrom, context)
                         println("location of saving file = ${file.toString()}")
                         var location = ""
                         if (file != null)
@@ -163,7 +163,8 @@ object webSocketListener : WebSocketListener() {
                         val file = URLdownloadFile(
                             receivedMessage.message,
                             receivedMessage.messageType?:"Image",
-                            receivedMessage.senderId
+                            receivedMessage.senderId,
+                            context
                         )
                         println("location of saving file = ${file.toString()}")
                         var location = ""
