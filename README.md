@@ -8,7 +8,7 @@ Easily find and connect with other students from your college. Break the ice by 
 ***2. Collaborative Learning:***  
 Enhance your learning experience by participating in video calls with classmates.
   
-***3. Create Groups and Clubs:**  
+***3. Create Groups and Clubs:***  
 Empower your networking abilities by creating or joining groups & differnt clubs based on common interests or academic pursuits.
   
 ***5. Advanced Search Functionality:***   
