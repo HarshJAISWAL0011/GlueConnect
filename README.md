@@ -1,8 +1,11 @@
 # Glue Connect
 Welcome to Glue Connect, the ultimate platform for college students to connect, collaborate, and excel academically together! With Glue Connect, students can seamlessly interact with their peers using text, images, videos, audio, and even conduct video calls to enhance their understanding of various topics. Whether you're looking to study together, form study groups, or simply socialize, Glue Connect is your go-to hub.  
-![Glue Connect](https://play-lh.googleusercontent.com/lmiqBTbBCKTKCQG2oXqgSR7p7-qpwrh_Ahh71PDDE5D-s_ZoJ7fex5pp5Jss7mSgRA=w2560-h1440-rw)
+ <br/><br/>
   
-***Key Features***  
+![Glue Connect](https://play-lh.googleusercontent.com/lmiqBTbBCKTKCQG2oXqgSR7p7-qpwrh_Ahh71PDDE5D-s_ZoJ7fex5pp5Jss7mSgRA=w2560-h1440-rw)  
+ <br/><br/>
+ 
+***Key Features:***  
 ***1. Connect with Fellow Students:***  
 Easily find and connect with other students from your college. Break the ice by chatting through text, sharing images and videos, or even engaging in audio conversations.
   
@@ -32,3 +35,4 @@ Build your unique profile showcasing your skills, interests, and academic detail
 
 
 Ready to connect, collaborate, and excel?
+Download the app from [Playstore](https://play.google.com/store/apps/details?id=com.apexharn.chatapplication)
