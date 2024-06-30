@@ -34,5 +34,5 @@ Build your unique profile showcasing your skills, interests, and academic detail
 
 
 
-Ready to connect, collaborate, and excel?
+Ready to connect, collaborate, and excel?  
 Download the app from [Playstore](https://play.google.com/store/apps/details?id=com.apexharn.chatapplication)
